@@ -1,6 +1,10 @@
 @php
     $currentRaceId = session('bet.current_race_id');
-    $cartCount = $currentRaceId ? count(session("bet_cart.$currentRaceId.items", [])) : 0;
+    $cartCount = 0;
+    if ($currentRaceId) {
+        $currentCart = session("bet_cart_{$currentRaceId}", []);
+        $cartCount = is_array($currentCart) ? count($currentCart['items'] ?? []) : 0;
+    }
     $isAdmin = auth()->check() && auth()->user()->isAdmin();
     $raceSelectRoute = $isAdmin ? route('races.index') : route('bet.races');
     $isStatsPage = request()->routeIs('stats.*');

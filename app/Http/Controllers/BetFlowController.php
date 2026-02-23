@@ -17,7 +17,8 @@ class BetFlowController extends Controller
     private function cartKey(int $raceId): string
     {
         // レースごとにカートを分ける（他レースを誤爆しない）
-        return "bet_cart.{$raceId}";
+        // NOTE: ドット区切りは既存セッション構造と衝突する場合があるため、フラットキーで保持する
+        return "bet_cart_{$raceId}";
     }
 
     public function selectRace()

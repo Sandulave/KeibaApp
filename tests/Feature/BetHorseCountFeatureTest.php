@@ -103,7 +103,7 @@ class BetHorseCountFeatureTest extends TestCase
         $response->assertRedirect(route('bet.cart', $race));
         $response->assertSessionHasNoErrors();
 
-        $cart = session("bet_cart.{$race->id}");
+        $cart = session("bet_cart_{$race->id}");
         $this->assertNotNull($cart);
         $this->assertSame(['2-2', '2-3'], collect($cart['items'])->pluck('selection_key')->values()->all());
     }
@@ -124,7 +124,7 @@ class BetHorseCountFeatureTest extends TestCase
         $response->assertRedirect(route('bet.cart', $race));
         $response->assertSessionHasNoErrors();
 
-        $cart = session("bet_cart.{$race->id}");
+        $cart = session("bet_cart_{$race->id}");
         $this->assertNotNull($cart);
         $this->assertSame(['2-2', '2-3'], collect($cart['items'])->pluck('selection_key')->values()->all());
     }
@@ -147,7 +147,7 @@ class BetHorseCountFeatureTest extends TestCase
 
         $response = $this->actingAs($user)
             ->withSession([
-                "bet_cart.{$race->id}" => [
+                "bet_cart_{$race->id}" => [
                     'race_id' => $race->id,
                     'items' => $cartItems,
                 ],

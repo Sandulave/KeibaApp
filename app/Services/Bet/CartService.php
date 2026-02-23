@@ -6,7 +6,7 @@ class CartService
 {
     private function cartKey(int $raceId): string
     {
-        return "bet_cart.{$raceId}";
+        return "bet_cart_{$raceId}";
     }
 
     public function addItems(int $raceId, array $items): void

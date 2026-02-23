@@ -3,7 +3,8 @@
         // old() で復元する用（stringで統一）
         $oldHorses = collect(old('horses', []))->map(fn($v) => (string) $v)->all();
         $oldAmount = old('amount', 100);
-        $cartCount = count(session("bet_cart.{$race->id}.items", []));
+        $cart = session("bet_cart_{$race->id}", []);
+        $cartCount = is_array($cart) ? count($cart['items'] ?? []) : 0;
 
         // Controllerから $horseNos が来る想定。万一未設定でも落とさない保険
         $horseNos = $horseNos ?? range(1, (int) ($race->horse_count ?? 18));
