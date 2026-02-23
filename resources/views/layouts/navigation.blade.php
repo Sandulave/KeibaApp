@@ -56,10 +56,4 @@
 
         </div>
     </div>
-
-    <div class="border-t border-amber-200 bg-amber-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 text-xs text-amber-800">
-            初回アクセス時はサーバー起動のため、5〜20秒ほどお待ちいただく場合があります。
-        </div>
-    </div>
 </nav>
