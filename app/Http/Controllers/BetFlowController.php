@@ -11,6 +11,7 @@ use App\Services\Bet\CartService;
 use App\Services\Bet\BuilderResolver;
 use App\Services\BetSettlementService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class BetFlowController extends Controller
 {
@@ -38,6 +39,12 @@ class BetFlowController extends Controller
         $cart = session($this->cartKey($race->id), [
             'race_id' => $race->id,
             'items' => [],
+        ]);
+        Log::info('bet.cart.view', [
+            'user_id' => auth()->id(),
+            'race_id' => $race->id,
+            'session_id' => session()->getId(),
+            'items_count' => count($cart['items'] ?? []),
         ]);
 
         return view('bet.cart', compact('race', 'cart'));
@@ -176,14 +183,31 @@ class BetFlowController extends Controller
 
         // items生成もBuilder側
         $items = $builder->build($validated, $race);
+        Log::info('bet.cart.add.build', [
+            'user_id' => auth()->id(),
+            'race_id' => $race->id,
+            'bet_type' => $betType,
+            'mode' => $mode,
+            'session_id' => session()->getId(),
+            'built_items_count' => count($items),
+        ]);
 
         if (empty($items)) {
-            return back()->withErrors(['opponents' => '有効な買い目がありません'])->withInput();
+            return back()
+                ->withErrors(['cart_add' => '有効な買い目がありません。列の選択条件を確認してください。'])
+                ->withInput();
         }
 
         $cartService->addItems($race->id, $items);
+        $savedCart = session($this->cartKey($race->id), ['items' => []]);
+        Log::info('bet.cart.add.saved', [
+            'user_id' => auth()->id(),
+            'race_id' => $race->id,
+            'session_id' => session()->getId(),
+            'saved_items_count' => count($savedCart['items'] ?? []),
+        ]);
 
-        return redirect()->route('bet.cart', $race)->with('success', 'カートに追加しました');
+        return redirect()->route('bet.cart', $race)->with('success', count($items) . '点をカートに追加しました');
     }
 
 
