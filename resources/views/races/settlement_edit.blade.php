@@ -123,24 +123,24 @@
 
                         <div class="space-y-2 payout-rows" data-bet="{{ $betType }}">
                             @foreach ($rows as $idx => $row)
-                                <div class="grid grid-cols-12 gap-2 items-center payout-row">
+                                <div class="grid grid-cols-1 md:grid-cols-12 gap-2 items-center payout-row">
                                     <input name="payouts[{{ $betType }}][{{ $idx }}][selection_key]"
-                                        class="col-span-5 rounded border-gray-300 text-sm"
+                                        class="md:col-span-5 rounded border-gray-300 text-sm"
                                         placeholder="当たり目（例: 1-2 / 1>2>3）" value="{{ $row['selection_key'] ?? '' }}">
 
                                     <input type="number" min="{{ $payoutMin }}"
                                         name="payouts[{{ $betType }}][{{ $idx }}][payout_per_100]"
                                         step="{{ $payoutStep }}"
-                                        class="col-span-3 rounded border-gray-300 text-sm" placeholder="払戻金"
+                                        class="md:col-span-3 rounded border-gray-300 text-sm" placeholder="払戻金"
                                         value="{{ $row['payout_per_100'] ?? '' }}">
 
                                     <input type="number" min="1"
                                         name="payouts[{{ $betType }}][{{ $idx }}][popularity]"
-                                        class="col-span-2 rounded border-gray-300 text-sm" placeholder="人気"
+                                        class="md:col-span-2 rounded border-gray-300 text-sm" placeholder="人気"
                                         value="{{ $row['popularity'] ?? '' }}">
 
                                     <button type="button"
-                                        class="remove-row col-span-2 rounded bg-gray-100 px-2 py-1 text-sm hover:bg-gray-200">
+                                        class="remove-row md:col-span-2 rounded bg-gray-100 px-2 py-1 text-sm hover:bg-gray-200">
                                         削除
                                     </button>
                                 </div>
@@ -148,16 +148,16 @@
                         </div>
 
                         <template id="tpl-{{ $betType }}">
-                            <div class="grid grid-cols-12 gap-2 items-center payout-row">
+                            <div class="grid grid-cols-1 md:grid-cols-12 gap-2 items-center payout-row">
                                 <input name="payouts[{{ $betType }}][__INDEX__][selection_key]"
-                                    class="col-span-5 rounded border-gray-300 text-sm"
+                                    class="md:col-span-5 rounded border-gray-300 text-sm"
                                     placeholder="当たり目（例: 1-2 / 1>2>3）">
                                 <input type="number" min="{{ $payoutMin }}" step="{{ $payoutStep }}" name="payouts[{{ $betType }}][__INDEX__][payout_per_100]"
-                                    class="col-span-3 rounded border-gray-300 text-sm" placeholder="払戻金">
+                                    class="md:col-span-3 rounded border-gray-300 text-sm" placeholder="払戻金">
                                 <input type="number" min="1" name="payouts[{{ $betType }}][__INDEX__][popularity]"
-                                    class="col-span-2 rounded border-gray-300 text-sm" placeholder="人気">
+                                    class="md:col-span-2 rounded border-gray-300 text-sm" placeholder="人気">
                                 <button type="button"
-                                    class="remove-row col-span-2 rounded bg-gray-100 px-2 py-1 text-sm hover:bg-gray-200">
+                                    class="remove-row md:col-span-2 rounded bg-gray-100 px-2 py-1 text-sm hover:bg-gray-200">
                                     削除
                                 </button>
                             </div>
@@ -244,12 +244,12 @@
                         popularity: '',
                     };
                     const row = document.createElement('div');
-                    row.className = 'grid grid-cols-12 gap-2 items-center payout-row';
+                    row.className = 'grid grid-cols-1 md:grid-cols-12 gap-2 items-center payout-row';
                     row.innerHTML = `
-                        <input name="payouts[${betType}][${idx}][selection_key]" class="col-span-5 rounded border-gray-300 text-sm" placeholder="当たり目（例: 1-2 / 1>2>3）" value="${key}">
-                        <input type="number" min="{{ $payoutMin }}" step="{{ $payoutStep }}" name="payouts[${betType}][${idx}][payout_per_100]" class="col-span-3 rounded border-gray-300 text-sm" placeholder="払戻金" value="${preserved.payout}">
-                        <input type="number" min="1" name="payouts[${betType}][${idx}][popularity]" class="col-span-2 rounded border-gray-300 text-sm" placeholder="人気" value="${preserved.popularity}">
-                        <button type="button" class="remove-row col-span-2 rounded bg-gray-100 px-2 py-1 text-sm hover:bg-gray-200">削除</button>
+                        <input name="payouts[${betType}][${idx}][selection_key]" class="md:col-span-5 rounded border-gray-300 text-sm" placeholder="当たり目（例: 1-2 / 1>2>3）" value="${key}">
+                        <input type="number" min="{{ $payoutMin }}" step="{{ $payoutStep }}" name="payouts[${betType}][${idx}][payout_per_100]" class="md:col-span-3 rounded border-gray-300 text-sm" placeholder="払戻金" value="${preserved.payout}">
+                        <input type="number" min="1" name="payouts[${betType}][${idx}][popularity]" class="md:col-span-2 rounded border-gray-300 text-sm" placeholder="人気" value="${preserved.popularity}">
+                        <button type="button" class="remove-row md:col-span-2 rounded bg-gray-100 px-2 py-1 text-sm hover:bg-gray-200">削除</button>
                     `;
                     container.appendChild(row);
                 });

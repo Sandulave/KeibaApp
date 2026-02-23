@@ -1,5 +1,5 @@
 <x-app-layout title="買い方選択（{{ $race->name }}）">
-    <div class="space-y-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         <div class="flex justify-between">
             <a href="{{ route('bet.types', $race) }}" class="text-sm text-blue-600 underline">
                 ← 券種選択に戻る

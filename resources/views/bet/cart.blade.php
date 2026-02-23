@@ -1,5 +1,5 @@
 <x-app-layout title="購入予定一覧">
-    <div class="space-y-4">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-4">
 
         @if (session('success'))
             <div class="rounded bg-green-100 p-3 text-green-800">{{ session('success') }}</div>
@@ -86,7 +86,7 @@
             <input type="hidden" name="action" value="update_amount" />
 
             <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 p-4 space-y-2">
-                <div class="grid grid-cols-12 gap-2 text-xs text-gray-500">
+                <div class="hidden md:grid grid-cols-12 gap-2 text-xs text-gray-500">
                     <div class="col-span-2">券種</div>
                     <div class="col-span-6">買い目</div>
                     <div class="col-span-2">金額</div>
@@ -97,16 +97,16 @@
                     @php
                         $i = (int) ($item['original_index'] ?? 0);
                     @endphp
-                    <div class="grid grid-cols-12 gap-2 items-center">
-                        <div class="col-span-2 text-sm">
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-2 items-start md:items-center border border-gray-100 rounded-lg p-3 md:border-0 md:rounded-none md:p-0">
+                        <div class="md:col-span-2 text-sm font-medium">
                             {{ $betLabels[$item['bet_type']] ?? $item['bet_type'] }}
                         </div>
 
-                        <div class="col-span-6 text-sm font-mono break-all">
+                        <div class="md:col-span-6 text-sm font-mono break-all">
                             {{ $item['selection_key'] }}
                         </div>
 
-                        <div class="col-span-2">
+                        <div class="md:col-span-2">
                             <input type="number" min="0" step="100"
                                 name="items[{{ $i }}][amount]" value="{{ (int) $item['amount'] }}"
                                 class="w-full rounded border-gray-300 amount-input" />
@@ -115,7 +115,7 @@
                             </div>
                         </div>
 
-                        <div class="col-span-2 flex justify-end gap-2">
+                        <div class="md:col-span-2 flex justify-end md:justify-end gap-2">
                             <button type="submit"
                                 class="text-xs rounded bg-blue-600 text-white px-2 py-1 hover:bg-blue-700">
                                 金額更新

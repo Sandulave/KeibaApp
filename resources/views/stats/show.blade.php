@@ -48,8 +48,8 @@
             <div class="px-6 py-4 border-b border-gray-200">
                 <h2 class="text-lg font-semibold">レース別成績</h2>
             </div>
-            <div>
-                <table class="w-full table-auto">
+            <div class="overflow-x-auto">
+                <table class="min-w-[1200px] w-full table-auto">
                     <thead>
                         <tr class="bg-gray-50 border-b border-gray-200">
                             <th

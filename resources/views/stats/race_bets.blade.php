@@ -28,7 +28,8 @@
         </div>
 
         <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 overflow-hidden">
-            <table class="w-full table-auto">
+            <div class="overflow-x-auto">
+            <table class="min-w-[760px] w-full table-auto">
                 <thead>
                     <tr class="bg-gray-50 border-b border-gray-200">
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">購入日時</th>
@@ -66,6 +67,7 @@
                     @endforelse
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 </x-app-layout>

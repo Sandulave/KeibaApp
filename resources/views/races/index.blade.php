@@ -16,7 +16,8 @@
 
         {{-- テーブル --}}
         <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 overflow-hidden">
-            <table class="min-w-full">
+            <div class="overflow-x-auto">
+            <table class="min-w-[700px] w-full">
                 <thead>
                     <tr class="bg-gray-50 border-b border-gray-200">
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">名前</th>
@@ -60,6 +61,7 @@
                     @endforelse
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 </x-app-layout>

@@ -1,5 +1,5 @@
 <x-app-layout title="券種選択（{{ $race->name }}）">
-    <div class="space-y-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         <div>
             <a href="{{ route('bet.races') }}" class="text-sm text-blue-600 underline">
                 ← レース選択に戻る
@@ -16,7 +16,7 @@
             @if (empty($types))
                 <div class="text-sm text-gray-500">券種がまだ登録されていません</div>
             @else
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                     @foreach ($types as $betTypeKey => $type)
                         <a href="{{ route('bet.modes', [$race, $betTypeKey]) }}"
                             class="block rounded-lg border border-gray-300 p-4 text-center hover:bg-gray-50">

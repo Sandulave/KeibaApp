@@ -2,6 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  /* bet/build 系画面だけ共通で横幅を制限して見やすくする */
+  .bet-build-page main {
+    max-width: 1280px;
+    margin-inline: auto;
+    padding: 1.5rem 1rem 2rem;
+  }
+
+  @media (min-width: 640px) {
+    .bet-build-page main {
+      padding-inline: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .bet-build-page main {
+      padding-inline: 2rem;
+    }
+  }
+}
+
 @layer components {
   .bet-build-page table th,
   .bet-build-page table td {
