@@ -6,11 +6,9 @@
             <p class="mt-1 text-sm text-gray-500">{{ $audienceRoleLabel }}</p>
         </div>
 
-        @if (session('success'))
-            <div class="mb-6 rounded bg-green-100 p-3 text-green-800">
-                {{ session('success') }}
-            </div>
-        @endif
+        <div id="adjustmentNotice"
+            class="mb-6 hidden rounded bg-green-100 px-4 py-4 text-lg font-semibold text-green-800 sm:text-xl">
+        </div>
 
         @if ($errors->any())
             <div class="mb-6 rounded bg-red-100 p-3 text-red-800 text-sm">
@@ -121,13 +119,13 @@
                                             action="{{ route('stats.users.adjustments.update', $user) }}" class="js-adjustment-form">
                                             @csrf
                                             <input type="hidden" name="race_id" value="{{ $row->race_id }}">
-                                            <input type="number" name="bonus_points" min="0" max="1000000"
+                                            <input type="number" name="bonus_points" min="{{ -1 * $adjustmentMax }}" max="{{ $adjustmentMax }}"
                                                 value="{{ old('race_id') == $row->race_id ? old('bonus_points') : (int) $row->bonus_points }}"
                                                 class="w-24 rounded border-gray-300 text-sm text-right" placeholder="ボーナス">
                                         </form>
                                     </td>
                                     <td class="px-3 py-3 align-middle whitespace-nowrap text-sm text-right">
-                                        <input type="number" name="carry_over_amount" min="0" max="1000000"
+                                        <input type="number" name="carry_over_amount" min="{{ -1 * $adjustmentMax }}" max="{{ $adjustmentMax }}" step="100"
                                             form="{{ $formId }}"
                                             value="{{ old('race_id') == $row->race_id ? old('carry_over_amount') : (int) $row->carry_over_amount }}"
                                             class="w-24 rounded border-gray-300 text-sm text-right" placeholder="繰越金">
@@ -180,10 +178,6 @@
         </div>
     </div>
     @if ($canEditAdjustments)
-        <div id="adjustmentToast"
-            class="fixed right-4 top-20 z-50 hidden rounded bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-lg">
-            保存しました
-        </div>
         <script>
             (() => {
                 const toNumber = (v) => {
@@ -194,15 +188,24 @@
                 const formatNum = (v) => v.toLocaleString('ja-JP');
                 const summaryReturnEl = document.getElementById('summaryTotalReturn');
                 const summaryCombinedEl = document.getElementById('summaryCombined');
-                const toast = document.getElementById('adjustmentToast');
-                let toastTimer = null;
+                const notice = document.getElementById('adjustmentNotice');
+                const initialSuccessMessage = @json(session('success'));
 
-                const showToast = (message) => {
-                    if (!toast) return;
-                    toast.textContent = message;
-                    toast.classList.remove('hidden');
-                    if (toastTimer) clearTimeout(toastTimer);
-                    toastTimer = setTimeout(() => toast.classList.add('hidden'), 1800);
+                const setNoticeVariant = (variant) => {
+                    if (!notice) return;
+                    notice.classList.remove('bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800');
+                    if (variant === 'danger') {
+                        notice.classList.add('bg-red-100', 'text-red-800');
+                        return;
+                    }
+                    notice.classList.add('bg-green-100', 'text-green-800');
+                };
+
+                const showNotice = (message, variant = 'success') => {
+                    if (!notice) return;
+                    setNoticeVariant(variant);
+                    notice.textContent = message;
+                    notice.classList.remove('hidden');
                 };
 
                 const refreshSummary = () => {
@@ -262,7 +265,7 @@
                             carryCell.textContent = formatNum(carry);
                             sumCell.textContent = formatYen(totalReturn + bonus + carry);
                             refreshSummary();
-                            showToast('保存しました');
+                            showNotice('保存しました');
                         } catch (err) {
                             alert('保存に失敗しました。入力値または権限を確認してください。');
                         } finally {
@@ -270,6 +273,24 @@
                         }
                     });
                 });
+
+                if (initialSuccessMessage) {
+                    const variant = initialSuccessMessage.includes('削除') ? 'danger' : 'success';
+                    showNotice(initialSuccessMessage, variant);
+                }
+            })();
+        </script>
+    @elseif (session('success'))
+        <script>
+            (() => {
+                const notice = document.getElementById('adjustmentNotice');
+                if (!notice) return;
+                const message = @json(session('success'));
+                notice.classList.remove('bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800');
+                notice.classList.add(message.includes('削除') ? 'bg-red-100' : 'bg-green-100');
+                notice.classList.add(message.includes('削除') ? 'text-red-800' : 'text-green-800');
+                notice.textContent = message;
+                notice.classList.remove('hidden');
             })();
         </script>
     @endif

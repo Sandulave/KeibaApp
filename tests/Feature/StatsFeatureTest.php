@@ -47,6 +47,72 @@ class StatsFeatureTest extends TestCase
         ]);
     }
 
+    public function test_owner_can_update_negative_carry_over_amount_in_100_yen_units(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'user',
+            'audience_role' => 'viewer',
+        ]);
+        $race = $this->createRace();
+
+        $response = $this->actingAs($user)->post(route('stats.users.adjustments.update', $user), [
+            'race_id' => $race->id,
+            'bonus_points' => 1000,
+            'carry_over_amount' => -500,
+        ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('race_user_adjustments', [
+            'user_id' => $user->id,
+            'race_id' => $race->id,
+            'bonus_points' => 1000,
+            'carry_over_amount' => -500,
+        ]);
+    }
+
+    public function test_owner_can_update_negative_bonus_points_without_100_yen_unit_limit(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'user',
+            'audience_role' => 'viewer',
+        ]);
+        $race = $this->createRace();
+
+        $response = $this->actingAs($user)->post(route('stats.users.adjustments.update', $user), [
+            'race_id' => $race->id,
+            'bonus_points' => -55,
+            'carry_over_amount' => 100,
+        ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('race_user_adjustments', [
+            'user_id' => $user->id,
+            'race_id' => $race->id,
+            'bonus_points' => -55,
+            'carry_over_amount' => 100,
+        ]);
+    }
+
+    public function test_carry_over_amount_must_be_multiple_of_100(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'user',
+            'audience_role' => 'viewer',
+        ]);
+        $race = $this->createRace();
+
+        $response = $this->from(route('stats.users.show', $user))
+            ->actingAs($user)
+            ->post(route('stats.users.adjustments.update', $user), [
+                'race_id' => $race->id,
+                'bonus_points' => 1000,
+                'carry_over_amount' => -550,
+            ]);
+
+        $response->assertRedirect(route('stats.users.show', $user));
+        $response->assertSessionHasErrors('carry_over_amount');
+    }
+
     public function test_kannrisyato_is_redirected_to_races_on_dashboard(): void
     {
         $kannrisya = User::factory()->create(['role' => 'kannrisyato']);

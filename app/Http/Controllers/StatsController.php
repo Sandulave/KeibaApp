@@ -141,6 +141,7 @@ class StatsController extends Controller
         $actor = request()->user();
         $isAdmin = $actor->isAdmin();
         $canEditAdjustments = $isAdmin || $actor->id === $user->id;
+        $adjustmentMax = (int) config('domain.stats.adjustment_max', 1_000_000);
 
         $displayName = $user->display_name ?: $user->name;
         $audienceRoleLabel = $this->audienceRoleLabel($user->audience_role, $user->role);
@@ -219,6 +220,7 @@ class StatsController extends Controller
             'totalScore' => $totalScore,
             'raceRows' => $raceRows,
             'canEditAdjustments' => $canEditAdjustments,
+            'adjustmentMax' => $adjustmentMax,
         ]);
     }
 
@@ -233,20 +235,19 @@ class StatsController extends Controller
 
         $validated = $request->validate([
             'race_id' => ['required', 'integer', 'exists:races,id'],
-            'bonus_points' => ['required', 'integer', 'min:0', "max:{$adjustmentMax}"],
-            'carry_over_amount' => ['required', 'integer', 'min:0', "max:{$adjustmentMax}"],
+            'bonus_points' => ['required', 'integer', "between:-{$adjustmentMax},{$adjustmentMax}"],
+            'carry_over_amount' => ['required', 'integer', "between:-{$adjustmentMax},{$adjustmentMax}", 'multiple_of:100'],
             'note' => ['nullable', 'string', 'max:255'],
         ], [
             'race_id.required' => '対象レースを指定してください。',
             'race_id.exists' => '対象レースが見つかりません。',
             'bonus_points.required' => 'ボーナスPTを入力してください。',
             'bonus_points.integer' => 'ボーナスPTは数値で入力してください。',
-            'bonus_points.min' => 'ボーナスPTは0以上で入力してください。',
-            'bonus_points.max' => 'ボーナスPTが大きすぎます。',
+            'bonus_points.between' => "ボーナスPTは-{$adjustmentMax}〜{$adjustmentMax}の範囲で入力してください。",
             'carry_over_amount.required' => '繰越金を入力してください。',
             'carry_over_amount.integer' => '繰越金は数値で入力してください。',
-            'carry_over_amount.min' => '繰越金は0以上で入力してください。',
-            'carry_over_amount.max' => '繰越金が大きすぎます。',
+            'carry_over_amount.between' => "繰越金は-{$adjustmentMax}〜{$adjustmentMax}の範囲で入力してください。",
+            'carry_over_amount.multiple_of' => '繰越金は100円単位で入力してください。',
             'note.max' => 'メモは255文字以内で入力してください。',
         ]);
 
