@@ -65,6 +65,16 @@
             <div class="font-semibold">{{ $race->name }}</div>
         </div>
 
+        @if ($errors->any())
+            <div class="rounded bg-red-100 p-3 text-red-800 text-sm">
+                <ul class="list-disc pl-5 space-y-1">
+                    @foreach ($errors->all() as $e)
+                        <li>{{ $e }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         <form method="POST" action="{{ route('bet.cart.add', $race) }}" class="space-y-4">
             @csrf
 
