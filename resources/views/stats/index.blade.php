@@ -67,11 +67,14 @@
                 <tbody class="divide-y divide-gray-200">
                     @forelse($rows as $row)
                         @php
-                            $roleRowClass = match ($row->audience_role_label) {
-                                '配信者' => 'bg-rose-50 hover:bg-rose-100',
-                                '視聴者' => 'bg-sky-50 hover:bg-sky-100',
-                                default => 'hover:bg-blue-50',
-                            };
+                            $isMe = auth()->check() && ((int) auth()->id() === (int) $row->user_id);
+                            $roleRowClass = $isMe
+                                ? 'bg-green-50 hover:bg-green-100'
+                                : match ($row->audience_role_label) {
+                                    '配信者' => 'bg-rose-50 hover:bg-rose-100',
+                                    '視聴者' => 'bg-sky-50 hover:bg-sky-100',
+                                    default => 'hover:bg-blue-50',
+                                };
                         @endphp
                         <tr class="cursor-pointer transition-colors duration-150 {{ $roleRowClass }}"
                             onclick="window.location='{{ route('stats.users.show', $row->user_id) }}'">
