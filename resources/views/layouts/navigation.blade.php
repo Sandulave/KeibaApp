@@ -8,7 +8,9 @@
     $isAdmin = auth()->check() && auth()->user()->isAdmin();
     $raceSelectRoute = $isAdmin ? route('races.index') : route('bet.races');
     $isStatsPage = request()->routeIs('stats.index');
-    $isPersonalStatsPage = request()->is('stats/users/2');
+    $routeUser = request()->route('user');
+    $routeUserId = $routeUser instanceof \App\Models\User ? (int) $routeUser->id : (int) $routeUser;
+    $isPersonalStatsPage = request()->routeIs('stats.users.show') && $routeUserId === (int) auth()->id();
     $isRaceSelectPage = request()->routeIs('races.*')
         || request()->routeIs('bet.races')
         || request()->routeIs('bet.types')
@@ -36,7 +38,7 @@
                     成績ランキング
                 </a>
 
-                <a href="{{ route('stats.users.show', 2) }}"
+                <a href="{{ route('stats.users.show', auth()->id()) }}"
                     class="text-sm font-medium text-gray-700 hover:text-gray-900 transition {{ $isPersonalStatsPage ? 'underline underline-offset-4' : '' }}">
                     個人成績
                 </a>

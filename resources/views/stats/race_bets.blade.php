@@ -1,5 +1,5 @@
 <x-app-layout :title="$displayName . ' / ' . $race->name . ' の馬券詳細'">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-4">
         <div>
             <div class="flex flex-wrap items-center gap-4">
                 <a href="{{ route('stats.users.show', $user) }}" class="text-sm text-blue-600 hover:underline">← 個別成績に戻る</a>
@@ -7,6 +7,108 @@
             </div>
             <h1 class="mt-2 text-2xl font-bold tracking-tight">{{ $displayName }} / {{ $race->name }} の馬券詳細</h1>
             <p class="mt-1 text-sm text-gray-500">開催日: {{ $race->race_date }}</p>
+        </div>
+
+        <div class="rounded-lg bg-white p-3 ring-1 ring-gray-200">
+            <h2 class="text-xs font-semibold text-gray-900">レース結果</h2>
+            <div class="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                @foreach ([1, 2, 3] as $rank)
+                    <div class="rounded-md bg-gray-50 px-2 py-1.5">
+                        <div class="text-[11px] text-gray-500">{{ $rank }}着</div>
+                        <div class="mt-0.5 font-semibold text-gray-900">
+                            {{ !empty($resultByRank[$rank]) ? implode(', ', $resultByRank[$rank]) : '-' }}
+                        </div>
+                    </div>
+                @endforeach
+                <div class="rounded-md bg-gray-50 px-2 py-1.5">
+                    <div class="text-[11px] text-gray-500">取消</div>
+                    <div class="mt-0.5 font-semibold text-gray-900">
+                        {{ !empty($withdrawalHorses) ? implode(', ', $withdrawalHorses) : '-' }}
+                    </div>
+                </div>
+            </div>
+            @if (empty($resultByRank[1]) && empty($resultByRank[2]) && empty($resultByRank[3]) && empty($withdrawalHorses))
+                <p class="mt-2 text-xs text-gray-500">このレースの結果はまだ登録されていません。</p>
+            @endif
+        </div>
+
+        <div class="rounded-lg bg-white p-3 ring-1 ring-gray-200">
+            <h2 class="text-xs font-semibold text-gray-900">券種ごとの配当</h2>
+            @if ($payoutsByBetType->isNotEmpty())
+                @php
+                    $betTypeColors = [
+                        'tansho' => 'bg-[#5a67b3]',
+                        'fukusho' => 'bg-[#b75b4f]',
+                        'wakuren' => 'bg-[#78a95f]',
+                        'umaren' => 'bg-[#7a5a98]',
+                        'wide' => 'bg-[#6a9eab]',
+                        'umatan' => 'bg-[#c9a247]',
+                        'sanrenpuku' => 'bg-[#4f8cb8]',
+                        'sanrentan' => 'bg-[#c9843f]',
+                    ];
+                    $displayOrder = ['tansho', 'fukusho', 'wakuren', 'umaren', 'wide', 'umatan', 'sanrenpuku', 'sanrentan'];
+                    $groupsByType = $payoutsByBetType->mapWithKeys(function ($rows, $betType) use ($betTypeLabels) {
+                        return [
+                            $betType => [
+                                'betType' => $betType,
+                                'label' => $betTypeLabels[$betType] ?? $betType,
+                                'rows' => $rows->values(),
+                            ],
+                        ];
+                    });
+                    $orderedGroups = collect();
+                    foreach ($displayOrder as $betType) {
+                        if ($groupsByType->has($betType)) {
+                            $orderedGroups->push($groupsByType[$betType]);
+                        }
+                    }
+                    foreach ($groupsByType as $betType => $group) {
+                        if (!in_array($betType, $displayOrder, true)) {
+                            $orderedGroups->push($group);
+                        }
+                    }
+                    $columns = [
+                        $orderedGroups->slice(0, 4)->values(),
+                        $orderedGroups->slice(4)->values(),
+                    ];
+                @endphp
+
+                <div class="mt-2 grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    @foreach ($columns as $column)
+                        @if ($column->isNotEmpty())
+                            <div class="overflow-x-auto">
+                                <table class="min-w-[360px] w-full text-xs border border-gray-300 border-collapse bg-white">
+                                    <tbody>
+                                        @foreach ($column as $group)
+                                            @foreach ($group['rows'] as $index => $row)
+                                                <tr class="border-b border-gray-300 last:border-b-0">
+                                                    @if ($index === 0)
+                                                        <td rowspan="{{ $group['rows']->count() }}"
+                                                            class="w-20 px-2 py-2 text-center text-white font-bold {{ $betTypeColors[$group['betType']] ?? 'bg-gray-500' }}">
+                                                            {{ $group['label'] }}
+                                                        </td>
+                                                    @endif
+                                                    <td class="px-3 py-2 border-l border-gray-300 text-center font-semibold text-gray-800">
+                                                        {{ $row->selection_key }}
+                                                    </td>
+                                                    <td class="px-3 py-2 border-l border-gray-300 text-right font-bold text-gray-800">
+                                                        {{ number_format((int) $row->payout_per_100) }}円
+                                                    </td>
+                                                    <td class="px-2 py-2 border-l border-gray-300 text-right text-gray-700 whitespace-nowrap">
+                                                        {{ $row->popularity ? $row->popularity . '人気' : '-' }}
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @endif
+                    @endforeach
+                </div>
+            @else
+                <p class="mt-2 text-xs text-gray-500">このレースの配当はまだ登録されていません。</p>
+            @endif
         </div>
 
         @php

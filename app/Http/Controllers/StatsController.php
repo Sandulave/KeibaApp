@@ -278,6 +278,7 @@ class StatsController extends Controller
         abort_if($user->isAdmin(), 404);
 
         $displayName = $user->display_name ?: $user->name;
+        $race->loadMissing(['resultEntries', 'withdrawals', 'payouts']);
 
         $bets = Bet::query()
             ->where('user_id', $user->id)
@@ -290,6 +291,20 @@ class StatsController extends Controller
             ->get();
 
         $betTypeLabels = config('domain.bet.type_labels', []);
+        $resultByRank = collect([1, 2, 3])->mapWithKeys(
+            fn (int $rank) => [$rank => $race->resultEntries->where('rank', $rank)->sortBy('horse_no')->pluck('horse_no')->all()]
+        );
+        $withdrawalHorses = $race->withdrawals->sortBy('horse_no')->pluck('horse_no')->all();
+        $payoutsByBetType = $race->payouts
+            ->groupBy('bet_type')
+            ->map(fn ($rows) => $rows
+                ->sortBy(fn ($row) => sprintf(
+                    '%05d_%s',
+                    (int) ($row->popularity ?? 99999),
+                    (string) $row->selection_key
+                ))
+                ->values())
+            ->sortKeys();
 
         return view('stats.race_bets', [
             'user' => $user,
@@ -297,6 +312,9 @@ class StatsController extends Controller
             'displayName' => $displayName,
             'bets' => $bets,
             'betTypeLabels' => $betTypeLabels,
+            'resultByRank' => $resultByRank,
+            'withdrawalHorses' => $withdrawalHorses,
+            'payoutsByBetType' => $payoutsByBetType,
         ]);
     }
 
