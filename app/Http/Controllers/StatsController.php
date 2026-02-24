@@ -186,8 +186,8 @@ class StatsController extends Controller
                 DB::raw('COALESCE(MAX(rua.carry_over_amount), 0) as carry_over_amount'),
             ])
             ->groupBy('races.id', 'races.name', 'races.race_date')
-            ->orderByDesc('races.race_date')
-            ->orderByDesc('races.id')
+            ->orderBy('races.race_date')
+            ->orderBy('races.id')
             ->get()
             ->map(function ($row) {
                 $stake = (int)$row->total_stake;
