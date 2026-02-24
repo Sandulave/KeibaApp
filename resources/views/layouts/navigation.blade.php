@@ -19,12 +19,16 @@
 
 <nav class="bg-gray-100">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="py-3 sm:h-16 sm:py-0 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+        <div class="py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+            <div class="sm:mr-auto flex items-center gap-3">
+                <img src="{{ asset('login_header.png') }}" alt="競馬アプリ ロゴ" class="h-20 sm:h-24 w-auto shrink-0" />
+
             @auth
-                <div class="text-xs sm:text-sm text-gray-600 break-all sm:mr-auto">
+                <div class="text-xs sm:text-sm text-gray-600 break-all">
                     ログイン中: {{ auth()->user()->display_name ?: auth()->user()->name }}
                 </div>
             @endauth
+            </div>
 
             <div class="flex flex-wrap items-center gap-x-4 gap-y-2 sm:gap-6">
                 <a href="{{ route('stats.index') }}"

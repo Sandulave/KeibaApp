@@ -1,4 +1,8 @@
 <x-guest-layout>
+    <div class="mb-4 flex justify-center">
+        <img src="{{ asset('login_header.png') }}" alt="競馬アプリ ロゴ" class="h-auto w-full max-w-xs" />
+    </div>
+
     {{-- タイトル（追加） --}}
     <div class="mb-6 text-center">
         <div class="text-2xl font-bold">競馬アプリ</div>

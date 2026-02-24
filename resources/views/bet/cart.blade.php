@@ -81,7 +81,7 @@
         </div>
 
         {{-- 金額更新（0円にした行は削除される仕様） --}}
-        <form method="POST" action="{{ route('bet.cart.update', $race) }}" class="space-y-3">
+        <form id="cart-update-form" method="POST" action="{{ route('bet.cart.update', $race) }}" class="space-y-3">
             @csrf
             <input type="hidden" name="action" value="update_amount" />
 
@@ -162,13 +162,14 @@
                 </div>
 
                 {{-- 下段：確定（DB登録） --}}
-                <form method="POST" action="{{ route('bet.commit', $race) }}">
-                    @csrf
-                    <button class="w-full rounded bg-blue-600 px-4 py-3 text-white font-semibold disabled:opacity-50"
-                        @disabled($totalCount === 0) onclick="return confirm('この内容で購入を確定しますか？')">
-                        決定（DB登録）
-                    </button>
-                </form>
+                <button type="submit"
+                    form="cart-update-form"
+                    formaction="{{ route('bet.commit', $race) }}"
+                    formmethod="POST"
+                    class="w-full rounded bg-blue-600 px-4 py-3 text-white font-semibold disabled:opacity-50"
+                    @disabled($totalCount === 0) onclick="return confirm('この内容で購入を確定しますか？')">
+                    決定（DB登録）
+                </button>
 
             </div>
         </div>

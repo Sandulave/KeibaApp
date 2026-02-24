@@ -79,7 +79,17 @@ class BetFlowController extends Controller
 
             $validated = $request->validate([
                 'items' => ['required', 'array'],
-                'items.*.amount' => ['required', 'integer', 'min:0', "max:{$amountMax}"],
+                'items.*.amount' => [
+                    'required',
+                    'integer',
+                    'min:0',
+                    "max:{$amountMax}",
+                    function ($attribute, $value, $fail) {
+                        if ($value % 100 !== 0) {
+                            $fail('金額は100円単位で入力してください。');
+                        }
+                    },
+                ],
             ]);
 
             foreach ($cart['items'] as $i => $item) {
@@ -128,6 +138,38 @@ class BetFlowController extends Controller
 
         if (!$cart || empty($cart['items'])) {
             return redirect()->route('bet.cart', $race)->with('error', 'カートが空です');
+        }
+
+        // 決定時に入力欄の最新金額を反映（更新ボタン押し忘れ対策）
+        if ($request->has('items')) {
+            $amountMax = (int) config('domain.bet.amount.max', 1_000_000);
+            $validated = $request->validate([
+                'items' => ['required', 'array'],
+                'items.*.amount' => [
+                    'required',
+                    'integer',
+                    'min:0',
+                    "max:{$amountMax}",
+                    function ($attribute, $value, $fail) {
+                        if ($value % 100 !== 0) {
+                            $fail('金額は100円単位で入力してください。');
+                        }
+                    },
+                ],
+            ]);
+
+            foreach ($cart['items'] as $i => $item) {
+                if (isset($validated['items'][$i]['amount'])) {
+                    $cart['items'][$i]['amount'] = (int) $validated['items'][$i]['amount'];
+                }
+            }
+
+            $cart['items'] = array_values(array_filter($cart['items'], fn ($row) => (int) $row['amount'] > 0));
+            session([$cartKey => $cart]);
+
+            if (empty($cart['items'])) {
+                return redirect()->route('bet.cart', $race)->with('error', 'カートが空です');
+            }
         }
 
         DB::transaction(function () use ($race, $cart) {
