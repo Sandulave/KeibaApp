@@ -15,19 +15,19 @@
 
         <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 overflow-hidden">
             <div class="overflow-x-auto">
-            <table class="min-w-[680px] w-full">
+            <table class="w-full table-auto">
                 <thead>
                     <tr class="bg-gray-50 border-b border-gray-200">
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">名前</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">開催日</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">コース</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">結果・配当</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">購入・詳細</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200">
                     @forelse($races as $race)
-                        <tr class="group cursor-pointer hover:bg-blue-50 transition-colors duration-150"
-                            onclick="window.location='{{ route('bet.types', $race) }}'">
+                        <tr class="hover:bg-gray-50 transition-colors duration-150">
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $race->name }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ $race->race_date }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ $race->course }}</td>
@@ -40,10 +40,22 @@
                                     <span class="text-gray-400">未登録</span>
                                 @endif
                             </td>
+                            <td class="px-4 py-4 text-sm text-gray-600">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <a href="{{ route('bet.types', $race) }}"
+                                        class="inline-flex items-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition">
+                                        購入へ
+                                    </a>
+                                    <a href="{{ route('stats.users.race-bets', [2, $race->id]) }}"
+                                        class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition">
+                                        購入馬券詳細
+                                    </a>
+                                </div>
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="px-6 py-8 text-center text-sm text-gray-500">
+                            <td colspan="5" class="px-6 py-8 text-center text-sm text-gray-500">
                                 レースがありません（管理者でレース登録してください）
                             </td>
                         </tr>
