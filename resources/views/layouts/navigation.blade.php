@@ -7,7 +7,8 @@
     }
     $isAdmin = auth()->check() && auth()->user()->isAdmin();
     $raceSelectRoute = $isAdmin ? route('races.index') : route('bet.races');
-    $isStatsPage = request()->routeIs('stats.*');
+    $isStatsPage = request()->routeIs('stats.index');
+    $isPersonalStatsPage = request()->is('stats/users/2');
     $isRaceSelectPage = request()->routeIs('races.*')
         || request()->routeIs('bet.races')
         || request()->routeIs('bet.types')
@@ -28,7 +29,12 @@
             <div class="flex flex-wrap items-center gap-x-4 gap-y-2 sm:gap-6">
                 <a href="{{ route('stats.index') }}"
                     class="text-sm font-medium text-gray-700 hover:text-gray-900 transition {{ $isStatsPage ? 'underline underline-offset-4' : '' }}">
-                    成績
+                    成績ランキング
+                </a>
+
+                <a href="{{ route('stats.users.show', 2) }}"
+                    class="text-sm font-medium text-gray-700 hover:text-gray-900 transition {{ $isPersonalStatsPage ? 'underline underline-offset-4' : '' }}">
+                    個人成績
                 </a>
 
                 <a href="{{ $raceSelectRoute }}"
