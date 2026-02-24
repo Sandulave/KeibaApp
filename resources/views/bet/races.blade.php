@@ -46,7 +46,7 @@
                                         class="inline-flex items-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition">
                                         購入へ
                                     </a>
-                                    <a href="{{ route('stats.users.race-bets', [2, $race->id]) }}"
+                                    <a href="{{ route('stats.users.race-bets', [auth()->id(), $race->id]) }}"
                                         class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition">
                                         購入馬券詳細
                                     </a>
