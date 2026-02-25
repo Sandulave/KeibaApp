@@ -144,16 +144,25 @@
                                 @endif
                                 <td class="px-3 py-3 align-middle whitespace-nowrap text-sm text-center">
                                     @if ($canEditAdjustments)
-                                        <form method="POST" action="{{ route('stats.users.adjustments.destroy', $user) }}"
-                                            onsubmit="return confirm('このレースの馬券・ボーナスPT・繰越金を削除します。よろしいですか？');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <input type="hidden" name="race_id" value="{{ $row->race_id }}">
-                                            <button type="submit"
-                                                class="rounded bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700">
+                                        @if ((bool) $row->is_betting_closed)
+                                            <button type="button"
+                                                class="rounded bg-gray-300 px-2 py-1 text-xs text-white cursor-not-allowed"
+                                                disabled
+                                                title="投票終了レースは削除できません">
                                                 削除
                                             </button>
-                                        </form>
+                                        @else
+                                            <form method="POST" action="{{ route('stats.users.adjustments.destroy', $user) }}"
+                                                onsubmit="return confirm('このレースの馬券・ボーナスPT・繰越金を削除します。よろしいですか？');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <input type="hidden" name="race_id" value="{{ $row->race_id }}">
+                                                <button type="submit"
+                                                    class="rounded bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700">
+                                                    削除
+                                                </button>
+                                            </form>
+                                        @endif
                                     @else
                                         <span class="text-gray-400">-</span>
                                     @endif

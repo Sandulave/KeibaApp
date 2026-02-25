@@ -13,6 +13,12 @@
             </div>
         @endif
 
+        @if (session('error'))
+            <div class="mb-6 rounded bg-red-100 p-3 text-red-800">
+                {{ session('error') }}
+            </div>
+        @endif
+
         <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 overflow-hidden">
             <div class="overflow-x-auto">
             <table class="w-full table-auto">
@@ -39,13 +45,25 @@
                                 @else
                                     <span class="text-gray-400">未登録</span>
                                 @endif
+                                @if ($race->is_betting_closed)
+                                    <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                        投票終了
+                                    </span>
+                                @endif
                             </td>
                             <td class="px-4 py-4 text-sm text-gray-600">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <a href="{{ route('bet.types', $race) }}"
-                                        class="inline-flex items-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition">
-                                        購入へ
-                                    </a>
+                                    @if ($race->is_betting_closed)
+                                        <span
+                                            class="inline-flex items-center rounded-md bg-gray-300 px-3 py-1.5 text-xs font-semibold text-white cursor-not-allowed">
+                                            購入終了
+                                        </span>
+                                    @else
+                                        <a href="{{ route('bet.types', $race) }}"
+                                            class="inline-flex items-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition">
+                                            購入へ
+                                        </a>
+                                    @endif
                                     <a href="{{ route('stats.users.race-bets', [auth()->id(), $race->id]) }}"
                                         class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition">
                                         購入馬券詳細

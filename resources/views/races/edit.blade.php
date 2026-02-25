@@ -122,6 +122,20 @@
                 @enderror
             </div>
 
+            <div class="mb-8 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <label for="is_betting_closed" class="inline-flex items-center gap-3 cursor-pointer">
+                    <input
+                        type="checkbox"
+                        id="is_betting_closed"
+                        name="is_betting_closed"
+                        value="1"
+                        @checked(old('is_betting_closed', $race->is_betting_closed))
+                        class="rounded border-gray-300 text-red-600 shadow-sm focus:ring-red-500"
+                    >
+                    <span class="text-sm font-medium text-gray-900">投票終了にする（このレースの馬券購入を停止）</span>
+                </label>
+            </div>
+
             {{-- ボタン --}}
             <div class="flex gap-3">
                 <button

@@ -60,7 +60,7 @@
                     </a>
                 @endif
 
-                <form method="POST" action="{{ route('logout') }}">
+                <form method="POST" action="{{ route('logout', [], false) }}">
                     @csrf
                     <button type="submit"
                         class="px-3 py-1.5 sm:px-4 sm:py-2 bg-gray-800 text-white font-bold rounded-md hover:bg-black transition text-sm">

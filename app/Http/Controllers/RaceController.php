@@ -38,12 +38,15 @@ class RaceController extends Controller
             'race_date' => ['required', 'date'],
             'course' => ['required', 'string', 'max:255'],
             'result' => ['nullable', 'string', 'max:255'],
+            'is_betting_closed' => ['nullable', 'boolean'],
         ], [
             'horse_count.required' => '頭数を入力してください。',
             'horse_count.integer' => '頭数は数値で入力してください。',
             'horse_count.min' => '頭数は1以上で入力してください。',
             'horse_count.max' => '頭数は18以下で入力してください。',
         ]);
+
+        $validated['is_betting_closed'] = $request->boolean('is_betting_closed');
 
         Race::create($validated);
 
@@ -108,12 +111,15 @@ class RaceController extends Controller
             'race_date' => ['required', 'date'],
             'course' => ['required', 'string', 'max:255'],
             'result' => ['nullable', 'string', 'max:255'],
+            'is_betting_closed' => ['nullable', 'boolean'],
         ], [
             'horse_count.required' => '頭数を入力してください。',
             'horse_count.integer' => '頭数は数値で入力してください。',
             'horse_count.min' => '頭数は1以上で入力してください。',
             'horse_count.max' => '頭数は18以下で入力してください。',
         ]);
+
+        $validated['is_betting_closed'] = $request->boolean('is_betting_closed');
 
         $race->update($validated);
 

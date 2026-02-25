@@ -12,6 +12,11 @@ class Race extends Model
         'horse_count',
         'race_date',
         'course',
+        'is_betting_closed',
+    ];
+
+    protected $casts = [
+        'is_betting_closed' => 'boolean',
     ];
 
     // result, resultsリレーション削除

@@ -1,5 +1,11 @@
 <x-app-layout title="レース一覧">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        @if (session('success'))
+            <div class="mb-6 rounded-lg bg-green-100 p-3 text-green-800 ring-1 ring-green-200">
+                {{ session('success') }}
+            </div>
+        @endif
+
         {{-- ヘッダー --}}
         <div class="flex items-center justify-between mb-8">
             <div>

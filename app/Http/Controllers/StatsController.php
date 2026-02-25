@@ -178,6 +178,7 @@ class StatsController extends Controller
                 'races.id as race_id',
                 'races.name as race_name',
                 'races.race_date as race_date',
+                'races.is_betting_closed as is_betting_closed',
                 DB::raw('COUNT(bets.id) as bet_count'),
                 DB::raw('COALESCE(SUM(bets.stake_amount), 0) as total_stake'),
                 DB::raw('COALESCE(SUM(bets.return_amount), 0) as total_return'),
@@ -185,7 +186,7 @@ class StatsController extends Controller
                 DB::raw('COALESCE(MAX(rua.bonus_points), 0) as bonus_points'),
                 DB::raw('COALESCE(MAX(rua.carry_over_amount), 0) as carry_over_amount'),
             ])
-            ->groupBy('races.id', 'races.name', 'races.race_date')
+            ->groupBy('races.id', 'races.name', 'races.race_date', 'races.is_betting_closed')
             ->orderBy('races.race_date')
             ->orderBy('races.id')
             ->get()
@@ -437,6 +438,22 @@ class StatsController extends Controller
         ]);
 
         $raceId = (int) $validated['race_id'];
+        $isBettingClosed = Race::query()
+            ->whereKey($raceId)
+            ->value('is_betting_closed');
+
+        if ($isBettingClosed) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'message' => '投票終了レースのため削除できません。',
+                ], 422);
+            }
+
+            return back()->withErrors([
+                'adjustment' => '投票終了レースのため削除できません。',
+            ]);
+        }
 
         DB::transaction(function () use ($user, $raceId) {
             Bet::query()

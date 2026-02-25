@@ -15,6 +15,17 @@ use Illuminate\Support\Facades\Log;
 
 class BetFlowController extends Controller
 {
+    private function ensureRaceBettingOpen(Race $race)
+    {
+        if (!$race->is_betting_closed) {
+            return null;
+        }
+
+        return redirect()
+            ->route('bet.races')
+            ->with('error', 'このレースは投票終了のため購入できません。');
+    }
+
     private function cartKey(int $raceId): string
     {
         // レースごとにカートを分ける（他レースを誤爆しない）
@@ -35,6 +46,10 @@ class BetFlowController extends Controller
 
     public function cart(Race $race)
     {
+        if ($response = $this->ensureRaceBettingOpen($race)) {
+            return $response;
+        }
+
         session(['bet.current_race_id' => $race->id]);
         $cart = session($this->cartKey($race->id), [
             'race_id' => $race->id,
@@ -53,6 +68,10 @@ class BetFlowController extends Controller
 
     public function cartUpdate(Request $request, Race $race)
     {
+        if ($response = $this->ensureRaceBettingOpen($race)) {
+            return $response;
+        }
+
         $request->validate([
             'items.*.amount' => [
                 'nullable',
@@ -134,6 +153,10 @@ class BetFlowController extends Controller
 
     public function commit(Request $request, Race $race, BetSettlementService $settlementService)
     {
+        if ($response = $this->ensureRaceBettingOpen($race)) {
+            return $response;
+        }
+
         $cartKey = $this->cartKey($race->id);
         $cart = session($cartKey);
 
@@ -211,6 +234,10 @@ class BetFlowController extends Controller
 
     public function cartAdd(Request $request, Race $race, CartService $cartService, BuilderResolver $resolver)
     {
+        if ($response = $this->ensureRaceBettingOpen($race)) {
+            return $response;
+        }
+
         $betType = (string) $request->input('betType', 'sanrentan');
         $modeRaw = (string) $request->input('mode', '');
 
@@ -259,6 +286,10 @@ class BetFlowController extends Controller
 
     public function selectType(Race $race)
     {
+        if ($response = $this->ensureRaceBettingOpen($race)) {
+            return $response;
+        }
+
         session(['bet.current_race_id' => $race->id]);
 
         $types = config('bets.types', []);
@@ -289,6 +320,10 @@ class BetFlowController extends Controller
 
     public function selectMode(Race $race, string $betType)
     {
+        if ($response = $this->ensureRaceBettingOpen($race)) {
+            return $response;
+        }
+
         session(['bet.current_race_id' => $race->id]);
 
         $types = config('bets.types', []);
@@ -304,6 +339,10 @@ class BetFlowController extends Controller
 
     public function buildByMode(Race $race, string $betType, string $mode)
     {
+        if ($response = $this->ensureRaceBettingOpen($race)) {
+            return $response;
+        }
+
         session(['bet.current_race_id' => $race->id]);
         // 互換：現状 mode が sanrentan_box のままでも動くようにする
         $mode = match ([$betType, $mode]) {
