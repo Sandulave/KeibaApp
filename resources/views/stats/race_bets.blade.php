@@ -112,6 +112,27 @@
         </div>
 
         @php
+            $snapshotBets = $bets->filter(fn($bet) => filled($bet->snapshot_text))->values();
+        @endphp
+        <div class="rounded-lg bg-white p-3 ring-1 ring-gray-200">
+            <h2 class="text-xs font-semibold text-gray-900">購入内容（入力ベース）</h2>
+            @if ($snapshotBets->isNotEmpty())
+                <div class="mt-2 space-y-2">
+                    @foreach ($snapshotBets as $bet)
+                        <div class="rounded-md border border-gray-200 bg-gray-50 p-2">
+                            <div class="text-[11px] text-gray-500">
+                                購入日時: {{ optional($bet->bought_at)->format('Y-m-d H:i:s') ?? '-' }}
+                            </div>
+                            <div class="mt-1 whitespace-pre-line font-mono text-xs leading-5 text-gray-900">{{ $bet->snapshot_text }}</div>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <p class="mt-2 text-xs text-gray-500">表示可能な購入入力データがありません（旧データ）。</p>
+            @endif
+        </div>
+
+        @php
             $itemTotal = $bets->sum(fn($bet) => $bet->items->count());
             $stakeTotal = $bets->sum(fn($bet) => (int) $bet->stake_amount);
             $returnTotal = $bets->sum(fn($bet) => (int) $bet->return_amount);

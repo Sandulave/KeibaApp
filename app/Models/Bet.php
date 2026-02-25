@@ -18,6 +18,7 @@ class Bet extends Model
         'hit_count',
         'roi_percent',
         'settled_at',
+        'build_snapshot',
     ];
 
     protected function casts(): array
@@ -26,6 +27,7 @@ class Bet extends Model
             'bought_at' => 'datetime',
             'settled_at' => 'datetime',
             'roi_percent' => 'decimal:2',
+            'build_snapshot' => 'array',
         ];
     }
 

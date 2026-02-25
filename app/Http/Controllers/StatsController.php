@@ -291,6 +291,9 @@ class StatsController extends Controller
             ->get();
 
         $betTypeLabels = config('domain.bet.type_labels', []);
+        $bets->each(function (Bet $bet) use ($betTypeLabels) {
+            $bet->snapshot_text = $this->formatBuildSnapshotText($bet->build_snapshot, $betTypeLabels);
+        });
         $resultByRank = collect([1, 2, 3])->mapWithKeys(
             fn (int $rank) => [$rank => $race->resultEntries->where('rank', $rank)->sortBy('horse_no')->pluck('horse_no')->all()]
         );
@@ -316,6 +319,107 @@ class StatsController extends Controller
             'withdrawalHorses' => $withdrawalHorses,
             'payoutsByBetType' => $payoutsByBetType,
         ]);
+    }
+
+    private function formatBuildSnapshotText(mixed $snapshot, array $betTypeLabels): ?string
+    {
+        if (!is_array($snapshot)) {
+            return null;
+        }
+
+        $groups = $snapshot['groups'] ?? null;
+        if (!is_array($groups) || empty($groups)) {
+            return null;
+        }
+
+        $blocks = [];
+        foreach ($groups as $group) {
+            if (!is_array($group)) {
+                continue;
+            }
+
+            $betType = (string) ($group['bet_type'] ?? '');
+            $mode = (string) ($group['mode'] ?? '');
+            $input = is_array($group['input'] ?? null) ? $group['input'] : [];
+            $pointCount = (int) ($group['point_count'] ?? 0);
+            $unitAmount = isset($group['unit_amount']) ? (int) $group['unit_amount'] : null;
+            $totalAmount = (int) ($group['total_amount'] ?? 0);
+            if ($betType === '' || $pointCount <= 0) {
+                continue;
+            }
+
+            $title = '■ ' . ($betTypeLabels[$betType] ?? $betType) . ' ' . $this->modeLabel($mode);
+            $detailLines = $this->snapshotDetailLines($betType, $mode, $input);
+            $amountLine = $unitAmount !== null
+                ? "◇{$pointCount}点 各" . number_format($unitAmount) . ' (計' . number_format($totalAmount) . ')'
+                : "◇{$pointCount}点 合計" . number_format($totalAmount);
+
+            $blocks[] = trim(implode("\n", array_filter([
+                $title,
+                ...$detailLines,
+                $amountLine,
+            ])));
+        }
+
+        return empty($blocks) ? null : implode("\n\n", $blocks);
+    }
+
+    private function snapshotDetailLines(string $betType, string $mode, array $input): array
+    {
+        $line = function (mixed $value): string {
+            if (is_array($value)) {
+                return empty($value) ? '-' : implode(', ', $value);
+            }
+            if (is_string($value) && $value !== '') {
+                return $value;
+            }
+            return '-';
+        };
+
+        if (!empty($input['selection_keys']) && is_array($input['selection_keys'])) {
+            return ['・' . implode(', ', $input['selection_keys'])];
+        }
+
+        if ($mode === 'box' || $mode === 'single') {
+            $vals = $input['horses'] ?? $input['horse'] ?? $input['frames'] ?? [];
+            return ['・' . $line($vals)];
+        }
+
+        if ($mode === 'formation') {
+            if (isset($input['third'])) {
+                return ['・' . $line($input['first'] ?? []) . ' - ' . $line($input['second'] ?? []) . ' - ' . $line($input['third'] ?? [])];
+            }
+            return ['・' . $line($input['first'] ?? []) . ' - ' . $line($input['second'] ?? [])];
+        }
+
+        if (in_array($mode, ['nagashi_1axis', 'nagashi_1axis_multi', 'oneaxis_multi'], true)) {
+            $axis = $line($input['axis'] ?? '-');
+            $opp = $line($input['opponents'] ?? []);
+            $lines = ["・{$axis} - {$opp}"];
+            if (in_array($betType, ['umatan'], true) && in_array($mode, ['nagashi_1axis_multi', 'oneaxis_multi'], true)) {
+                $lines[] = "・{$opp} - {$axis}";
+            }
+            return $lines;
+        }
+
+        if ($mode === 'nagashi_2axis') {
+            return ['・' . $line($input['axis1'] ?? '-') . ' - ' . $line($input['axis2'] ?? '-') . ' - ' . $line($input['opponents'] ?? [])];
+        }
+
+        return [];
+    }
+
+    private function modeLabel(string $mode): string
+    {
+        return match ($mode) {
+            'single' => 'シングル',
+            'box' => 'ボックス',
+            'formation' => 'フォーメーション',
+            'nagashi_1axis' => '1頭軸流し',
+            'nagashi_1axis_multi', 'oneaxis_multi' => '1頭軸流し マルチ',
+            'nagashi_2axis' => '2頭軸流し',
+            default => $mode !== '' ? $mode : '買い方',
+        };
     }
 
     public function destroyAdjustment(Request $request, User $user)

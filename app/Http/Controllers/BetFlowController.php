@@ -39,6 +39,7 @@ class BetFlowController extends Controller
         $cart = session($this->cartKey($race->id), [
             'race_id' => $race->id,
             'items' => [],
+            'groups' => [],
         ]);
         Log::info('bet.cart.view', [
             'user_id' => auth()->id(),
@@ -66,7 +67,7 @@ class BetFlowController extends Controller
         ]);
 
         $cartKey = $this->cartKey($race->id);
-        $cart = session($cartKey, ['race_id' => $race->id, 'items' => []]);
+        $cart = session($cartKey, ['race_id' => $race->id, 'items' => [], 'groups' => []]);
 
         $action = (string)$request->input('action', 'update_amount');
         if ($action === 'update_amount' && $request->filled('index')) {
@@ -174,6 +175,7 @@ class BetFlowController extends Controller
 
         DB::transaction(function () use ($race, $cart) {
             $stakeAmount = (int)collect($cart['items'])->sum(fn($i) => (int)$i['amount']);
+            $buildSnapshot = $this->buildSnapshotFromCart($cart);
 
             $bet = Bet::create([
                 'user_id' => auth()->id(),
@@ -182,6 +184,7 @@ class BetFlowController extends Controller
                 'return_amount' => 0,
                 'hit_count' => 0,
                 'roi_percent' => 0,
+                'build_snapshot' => $buildSnapshot,
                 // bought_at は model側で自動 now()
             ]);
 
@@ -241,7 +244,8 @@ class BetFlowController extends Controller
         }
 
         $cartService->addItems($race->id, $items);
-        $savedCart = session($this->cartKey($race->id), ['items' => []]);
+        $this->appendSnapshotGroup($race->id, $betType, $mode, $validated, $items);
+        $savedCart = session($this->cartKey($race->id), ['items' => [], 'groups' => []]);
         Log::info('bet.cart.add.saved', [
             'user_id' => auth()->id(),
             'race_id' => $race->id,
@@ -322,5 +326,117 @@ class BetFlowController extends Controller
             'mode' => $mode,
             'horseNos' => $horseNos,
         ]);
+    }
+
+    private function appendSnapshotGroup(int $raceId, string $betType, string $mode, array $validated, array $items): void
+    {
+        $cartKey = $this->cartKey($raceId);
+        $cart = session($cartKey, ['race_id' => $raceId, 'items' => [], 'groups' => []]);
+
+        $itemKeys = collect($items)
+            ->map(fn (array $row) => $this->itemKey((string) $row['bet_type'], (string) $row['selection_key']))
+            ->values()
+            ->all();
+        $unitAmount = $this->detectUnitAmount($items);
+        $input = $this->extractSnapshotInput($validated);
+
+        $cart['groups'] ??= [];
+        $cart['groups'][] = [
+            'bet_type' => $betType,
+            'mode' => $mode,
+            'input' => $input,
+            'item_keys' => $itemKeys,
+            'point_count' => count($items),
+            'unit_amount' => $unitAmount,
+            'total_amount' => (int) collect($items)->sum(fn (array $row) => (int) ($row['amount'] ?? 0)),
+        ];
+
+        session([$cartKey => $cart]);
+    }
+
+    private function buildSnapshotFromCart(array $cart): array
+    {
+        $groups = collect($cart['groups'] ?? [])
+            ->map(function (array $group) {
+                return [
+                    'bet_type' => (string) ($group['bet_type'] ?? ''),
+                    'mode' => (string) ($group['mode'] ?? ''),
+                    'input' => is_array($group['input'] ?? null) ? $group['input'] : [],
+                    'point_count' => (int) ($group['point_count'] ?? 0),
+                    'unit_amount' => isset($group['unit_amount']) ? (int) $group['unit_amount'] : null,
+                    'total_amount' => (int) ($group['total_amount'] ?? 0),
+                ];
+            })
+            ->filter(fn (array $group) => $group['bet_type'] !== '' && $group['point_count'] > 0)
+            ->values()
+            ->all();
+
+        if (empty($groups)) {
+            $fallbackByType = collect($cart['items'] ?? [])
+                ->groupBy('bet_type')
+                ->map(function ($rows, $betType) {
+                    $unitAmount = $this->detectUnitAmount($rows->all());
+                    return [
+                        'bet_type' => (string) $betType,
+                        'mode' => 'unknown',
+                        'input' => [
+                            'selection_keys' => $rows->pluck('selection_key')->values()->all(),
+                        ],
+                        'point_count' => $rows->count(),
+                        'unit_amount' => $unitAmount,
+                        'total_amount' => (int) $rows->sum(fn ($row) => (int) ($row['amount'] ?? 0)),
+                    ];
+                })
+                ->values()
+                ->all();
+
+            $groups = $fallbackByType;
+        }
+
+        return [
+            'version' => 1,
+            'groups' => $groups,
+        ];
+    }
+
+    private function extractSnapshotInput(array $validated): array
+    {
+        $keys = ['horse', 'horses', 'frames', 'first', 'second', 'third', 'axis', 'axis1', 'axis2', 'opponents', 'selection_keys'];
+        $input = [];
+
+        foreach ($keys as $key) {
+            if (!array_key_exists($key, $validated)) {
+                continue;
+            }
+
+            $value = $validated[$key];
+            if (is_array($value)) {
+                $input[$key] = collect($value)
+                    ->map(fn ($v) => (string) $v)
+                    ->unique()
+                    ->values()
+                    ->all();
+            } else {
+                $input[$key] = (string) $value;
+            }
+        }
+
+        return $input;
+    }
+
+    private function detectUnitAmount(array $items): ?int
+    {
+        $amounts = collect($items)
+            ->map(fn ($row) => (int) ($row['amount'] ?? 0))
+            ->filter(fn (int $amount) => $amount > 0)
+            ->unique()
+            ->values();
+
+        return $amounts->count() === 1 ? (int) $amounts->first() : null;
+    }
+
+    private function itemKey(string $betType, string $selectionKey): string
+    {
+        return $betType . '|' . $selectionKey;
     }
 }
