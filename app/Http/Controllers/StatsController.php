@@ -13,9 +13,15 @@ class StatsController extends Controller
 {
     public function index(Request $request)
     {
+        $viewMode = (string) $request->query('view', 'user');
+        if (!in_array($viewMode, ['user', 'race'], true)) {
+            $viewMode = 'user';
+        }
+
         $filter = (string)$request->query('role', 'all');
         $sortKey = (string) $request->query('sort', 'total_amount');
         $sortDir = (string) $request->query('dir', 'desc');
+        $selectedRaceId = (int) $request->query('race_id', 0);
         $audienceMap = config('domain.audience_roles', [
             'streamer' => 'streamer',
             'viewer' => 'viewer',
@@ -38,84 +44,182 @@ class StatsController extends Controller
             $sortDir = 'desc';
         }
 
-        $query = Bet::query()
-            ->select([
-                'users.id as user_id',
-                'users.name as user_name',
-                'users.display_name as user_display_name',
-                'users.role as user_role',
-                'users.audience_role as user_audience_role',
-                DB::raw('COUNT(bets.id) as bet_count'),
-                DB::raw('COALESCE(SUM(bets.stake_amount), 0) as total_stake'),
-                DB::raw('COALESCE(SUM(bets.return_amount), 0) as total_return'),
-                DB::raw('COALESCE(SUM(bets.hit_count), 0) as total_hits'),
-            ])
-            ->join('users', 'users.id', '=', 'bets.user_id')
-            ->whereNotIn('users.role', $adminRoles)
-            ->groupBy('users.id', 'users.name', 'users.display_name', 'users.role', 'users.audience_role')
-            ->orderByDesc(DB::raw('COALESCE(SUM(bets.return_amount), 0)'))
-            ->orderBy('users.id');
+        $raceOptions = Race::query()
+            ->select(['id', 'name', 'race_date'])
+            ->whereExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('bets')
+                    ->whereColumn('bets.race_id', 'races.id');
+            })
+            ->orderByDesc('race_date')
+            ->orderByDesc('id')
+            ->get();
 
-        if (isset($audienceMap[$filter])) {
-            $audienceRole = $audienceMap[$filter];
-            $query->where(function ($q) use ($audienceRole, $adminRoles, $viewerFallbackRole) {
-                $q->where('users.audience_role', $audienceRole);
-
-                // 既存データ互換: audience_role が未設定なら旧 role で暫定判定
-                if ($audienceRole === 'streamer') {
-                    $q->orWhere(function ($qq) use ($adminRoles) {
-                        $qq->whereNull('users.audience_role')
-                            ->whereIn('users.role', $adminRoles);
-                    });
-                } elseif ($audienceRole === 'viewer') {
-                    $q->orWhere(function ($qq) use ($viewerFallbackRole) {
-                        $qq->whereNull('users.audience_role')
-                            ->where('users.role', $viewerFallbackRole);
-                    });
-                }
-            });
+        if ($viewMode === 'race' && $selectedRaceId <= 0 && $raceOptions->isNotEmpty()) {
+            $selectedRaceId = (int) $raceOptions->first()->id;
         }
 
-        $adjustmentByUser = RaceUserAdjustment::query()
-            ->select([
-                'user_id',
-                DB::raw('COALESCE(SUM(bonus_points), 0) as total_bonus_points'),
-                DB::raw('COALESCE(SUM(carry_over_amount), 0) as total_carry_over_amount'),
-            ])
-            ->groupBy('user_id')
-            ->get()
-            ->keyBy('user_id');
+        $selectedRace = $viewMode === 'race' && $selectedRaceId > 0
+            ? $raceOptions->firstWhere('id', $selectedRaceId)
+            : null;
 
-        $baseRows = $query
-            ->get()
-            ->map(function ($row) use ($adjustmentByUser) {
-                $stake = (int)$row->total_stake;
-                $return = (int)$row->total_return;
-                $betCount = (int)$row->bet_count;
-                $hitCount = (int)$row->total_hits;
-                $adjustment = $adjustmentByUser->get($row->user_id);
-                $bonusPoints = (int)($adjustment->total_bonus_points ?? 0);
-                $carryOverAmount = (int)($adjustment->total_carry_over_amount ?? 0);
-                $totalAdjustment = $bonusPoints + $carryOverAmount;
+        if ($viewMode === 'race') {
+            if ($selectedRace !== null) {
+                $query = Bet::query()
+                    ->select([
+                        'users.id as user_id',
+                        'users.name as user_name',
+                        'users.display_name as user_display_name',
+                        'users.role as user_role',
+                        'users.audience_role as user_audience_role',
+                        DB::raw('COUNT(bets.id) as bet_count'),
+                        DB::raw('COALESCE(SUM(bets.stake_amount), 0) as total_stake'),
+                        DB::raw('COALESCE(SUM(bets.return_amount), 0) as total_return'),
+                        DB::raw('COALESCE(SUM(bets.hit_count), 0) as total_hits'),
+                        DB::raw('COALESCE(MAX(rua.bonus_points), 0) as bonus_points'),
+                        DB::raw('COALESCE(MAX(rua.carry_over_amount), 0) as carry_over_amount'),
+                    ])
+                    ->join('users', 'users.id', '=', 'bets.user_id')
+                    ->leftJoin('race_user_adjustments as rua', function ($join) use ($selectedRaceId) {
+                        $join->on('rua.user_id', '=', 'users.id')
+                            ->where('rua.race_id', '=', $selectedRaceId);
+                    })
+                    ->where('bets.race_id', $selectedRaceId)
+                    ->whereNotIn('users.role', $adminRoles)
+                    ->groupBy('users.id', 'users.name', 'users.display_name', 'users.role', 'users.audience_role')
+                    ->orderByDesc(DB::raw('COALESCE(SUM(bets.return_amount), 0)'))
+                    ->orderBy('users.id');
 
-                $row->roi_percent = $stake > 0
-                    ? round(($return / $stake) * 100, 2)
-                    : null;
-                $row->hit_rate_percent = $betCount > 0
-                    ? round(($hitCount / $betCount) * 100, 2)
-                    : null;
-                $row->display_name = $row->user_display_name ?: $row->user_name;
-                $row->audience_role_label = $this->audienceRoleLabel($row->user_audience_role, $row->user_role);
-                $row->profit_amount = $return - $stake;
-                $row->bonus_points = $bonusPoints;
-                $row->carry_over_amount = $carryOverAmount;
-                $row->total_amount = $return + $totalAdjustment;
-                $row->total_score = $stake > 0
-                    ? round((($return + $totalAdjustment) / $stake) * 100, 2)
-                    : null;
+                if (isset($audienceMap[$filter])) {
+                    $audienceRole = $audienceMap[$filter];
+                    $query->where(function ($q) use ($audienceRole, $adminRoles, $viewerFallbackRole) {
+                        $q->where('users.audience_role', $audienceRole);
 
-                return $row;
-            });
+                        if ($audienceRole === 'streamer') {
+                            $q->orWhere(function ($qq) use ($adminRoles) {
+                                $qq->whereNull('users.audience_role')
+                                    ->whereIn('users.role', $adminRoles);
+                            });
+                        } elseif ($audienceRole === 'viewer') {
+                            $q->orWhere(function ($qq) use ($viewerFallbackRole) {
+                                $qq->whereNull('users.audience_role')
+                                    ->where('users.role', $viewerFallbackRole);
+                            });
+                        }
+                    });
+                }
+
+                $baseRows = $query
+                    ->get()
+                    ->map(function ($row) {
+                        $stake = (int)$row->total_stake;
+                        $return = (int)$row->total_return;
+                        $betCount = (int)$row->bet_count;
+                        $hitCount = (int)$row->total_hits;
+                        $bonusPoints = (int)($row->bonus_points ?? 0);
+                        $carryOverAmount = (int)($row->carry_over_amount ?? 0);
+                        $totalAdjustment = $bonusPoints + $carryOverAmount;
+
+                        $row->roi_percent = $stake > 0
+                            ? round(($return / $stake) * 100, 2)
+                            : null;
+                        $row->hit_rate_percent = $betCount > 0
+                            ? round(($hitCount / $betCount) * 100, 2)
+                            : null;
+                        $row->display_name = $row->user_display_name ?: $row->user_name;
+                        $row->audience_role_label = $this->audienceRoleLabel($row->user_audience_role, $row->user_role);
+                        $row->profit_amount = $return - $stake;
+                        $row->bonus_points = $bonusPoints;
+                        $row->carry_over_amount = $carryOverAmount;
+                        $row->total_amount = $return + $totalAdjustment;
+                        $row->total_score = $stake > 0
+                            ? round((($return + $totalAdjustment) / $stake) * 100, 2)
+                            : null;
+
+                        return $row;
+                    });
+            } else {
+                $baseRows = collect();
+            }
+        } else {
+            $query = Bet::query()
+                ->select([
+                    'users.id as user_id',
+                    'users.name as user_name',
+                    'users.display_name as user_display_name',
+                    'users.role as user_role',
+                    'users.audience_role as user_audience_role',
+                    DB::raw('COUNT(bets.id) as bet_count'),
+                    DB::raw('COALESCE(SUM(bets.stake_amount), 0) as total_stake'),
+                    DB::raw('COALESCE(SUM(bets.return_amount), 0) as total_return'),
+                    DB::raw('COALESCE(SUM(bets.hit_count), 0) as total_hits'),
+                ])
+                ->join('users', 'users.id', '=', 'bets.user_id')
+                ->whereNotIn('users.role', $adminRoles)
+                ->groupBy('users.id', 'users.name', 'users.display_name', 'users.role', 'users.audience_role')
+                ->orderByDesc(DB::raw('COALESCE(SUM(bets.return_amount), 0)'))
+                ->orderBy('users.id');
+
+            if (isset($audienceMap[$filter])) {
+                $audienceRole = $audienceMap[$filter];
+                $query->where(function ($q) use ($audienceRole, $adminRoles, $viewerFallbackRole) {
+                    $q->where('users.audience_role', $audienceRole);
+
+                    if ($audienceRole === 'streamer') {
+                        $q->orWhere(function ($qq) use ($adminRoles) {
+                            $qq->whereNull('users.audience_role')
+                                ->whereIn('users.role', $adminRoles);
+                        });
+                    } elseif ($audienceRole === 'viewer') {
+                        $q->orWhere(function ($qq) use ($viewerFallbackRole) {
+                            $qq->whereNull('users.audience_role')
+                                ->where('users.role', $viewerFallbackRole);
+                        });
+                    }
+                });
+            }
+
+            $adjustmentByUser = RaceUserAdjustment::query()
+                ->select([
+                    'user_id',
+                    DB::raw('COALESCE(SUM(bonus_points), 0) as total_bonus_points'),
+                    DB::raw('COALESCE(SUM(carry_over_amount), 0) as total_carry_over_amount'),
+                ])
+                ->groupBy('user_id')
+                ->get()
+                ->keyBy('user_id');
+
+            $baseRows = $query
+                ->get()
+                ->map(function ($row) use ($adjustmentByUser) {
+                    $stake = (int)$row->total_stake;
+                    $return = (int)$row->total_return;
+                    $betCount = (int)$row->bet_count;
+                    $hitCount = (int)$row->total_hits;
+                    $adjustment = $adjustmentByUser->get($row->user_id);
+                    $bonusPoints = (int)($adjustment->total_bonus_points ?? 0);
+                    $carryOverAmount = (int)($adjustment->total_carry_over_amount ?? 0);
+                    $totalAdjustment = $bonusPoints + $carryOverAmount;
+
+                    $row->roi_percent = $stake > 0
+                        ? round(($return / $stake) * 100, 2)
+                        : null;
+                    $row->hit_rate_percent = $betCount > 0
+                        ? round(($hitCount / $betCount) * 100, 2)
+                        : null;
+                    $row->display_name = $row->user_display_name ?: $row->user_name;
+                    $row->audience_role_label = $this->audienceRoleLabel($row->user_audience_role, $row->user_role);
+                    $row->profit_amount = $return - $stake;
+                    $row->bonus_points = $bonusPoints;
+                    $row->carry_over_amount = $carryOverAmount;
+                    $row->total_amount = $return + $totalAdjustment;
+                    $row->total_score = $stake > 0
+                        ? round((($return + $totalAdjustment) / $stake) * 100, 2)
+                        : null;
+
+                    return $row;
+                });
+        }
 
         $rankByUserId = $baseRows
             ->sort(fn ($a, $b) => $this->compareStatsRows($a, $b, 'total_amount', 'desc'))
@@ -129,9 +233,13 @@ class StatsController extends Controller
         return view('stats.index', [
             'rows' => $rows,
             'rankByUserId' => $rankByUserId,
+            'viewMode' => $viewMode,
             'roleFilter' => $filter,
             'sortKey' => $sortKey,
             'sortDir' => $sortDir,
+            'raceOptions' => $raceOptions,
+            'selectedRaceId' => $selectedRaceId,
+            'selectedRace' => $selectedRace,
         ]);
     }
 
@@ -360,6 +468,53 @@ class StatsController extends Controller
                 ...$detailLines,
                 $amountLine,
             ])));
+        }
+
+        $removedItems = collect($snapshot['removed_items'] ?? [])
+            ->filter(fn ($row) => is_array($row))
+            ->map(function (array $row) use ($betTypeLabels) {
+                $betType = (string) ($row['bet_type'] ?? '');
+                $selectionKey = (string) ($row['selection_key'] ?? '');
+                $amount = (int) ($row['amount'] ?? 0);
+
+                if ($betType === '' || $selectionKey === '') {
+                    return null;
+                }
+
+                $label = $betTypeLabels[$betType] ?? $betType;
+                return "・{$label} {$selectionKey} " . number_format($amount) . '円';
+            })
+            ->filter()
+            ->values()
+            ->all();
+
+        if (!empty($removedItems)) {
+            $blocks[] = "■ 削除した買い目\n" . implode("\n", $removedItems);
+        }
+
+        $amountChanges = collect($snapshot['amount_changes'] ?? [])
+            ->filter(fn ($row) => is_array($row))
+            ->map(function (array $row) use ($betTypeLabels) {
+                $betType = (string) ($row['bet_type'] ?? '');
+                $selectionKey = (string) ($row['selection_key'] ?? '');
+                $oldAmount = (int) ($row['old_amount'] ?? 0);
+                $newAmount = (int) ($row['new_amount'] ?? 0);
+
+                if ($betType === '' || $selectionKey === '' || $oldAmount === $newAmount) {
+                    return null;
+                }
+
+                $label = $betTypeLabels[$betType] ?? $betType;
+
+                return '・' . $label . ' ' . $selectionKey . ' '
+                    . number_format($oldAmount) . '円 → ' . number_format($newAmount) . '円';
+            })
+            ->filter()
+            ->values()
+            ->all();
+
+        if (!empty($amountChanges)) {
+            $blocks[] = "■ 金額変更\n" . implode("\n", $amountChanges);
         }
 
         return empty($blocks) ? null : implode("\n\n", $blocks);

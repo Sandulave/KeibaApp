@@ -3,22 +3,61 @@
         <div class="mb-8">
             <h1 class="text-3xl font-bold tracking-tight">成績ランキング</h1>
             <p class="mt-1 text-sm text-gray-500">
-                ユーザー別の投資・回収・回収率・ボーナスPT・繰越金・合計を表示しています。
+                @if (($viewMode ?? 'user') === 'race')
+                    レース別のユーザーランキング（投資・回収・回収率・ボーナスPT・繰越金・合計）を表示しています。
+                @else
+                    ユーザー別の投資・回収・回収率・ボーナスPT・繰越金・合計を表示しています。
+                @endif
             </p>
         </div>
 
         <div class="mb-6 flex flex-wrap gap-2">
-            <a href="{{ route('stats.index', ['role' => 'all']) }}"
+            <a href="{{ route('stats.index', ['view' => 'user', 'role' => $roleFilter]) }}"
+                class="rounded-full px-4 py-2 text-sm font-medium transition
+                {{ ($viewMode ?? 'user') === 'user' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 ring-1 ring-gray-300 hover:bg-gray-50' }}">
+                ユーザー別
+            </a>
+            <a href="{{ route('stats.index', ['view' => 'race', 'role' => $roleFilter, 'race_id' => $selectedRaceId ?: null]) }}"
+                class="rounded-full px-4 py-2 text-sm font-medium transition
+                {{ ($viewMode ?? 'user') === 'race' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 ring-1 ring-gray-300 hover:bg-gray-50' }}">
+                レース別
+            </a>
+        </div>
+
+        @if (($viewMode ?? 'user') === 'race')
+            <form method="GET" action="{{ route('stats.index') }}" class="mb-6 flex flex-wrap items-center gap-2">
+                <input type="hidden" name="view" value="race">
+                <input type="hidden" name="role" value="{{ $roleFilter }}">
+                <label for="race_id" class="text-sm text-gray-700">対象レース</label>
+                <select id="race_id" name="race_id" class="rounded border-gray-300 text-sm" onchange="this.form.submit()">
+                    @forelse(($raceOptions ?? collect()) as $raceOption)
+                        <option value="{{ $raceOption->id }}" @selected((int) ($selectedRaceId ?? 0) === (int) $raceOption->id)>
+                            {{ $raceOption->race_date }} / {{ $raceOption->name }}
+                        </option>
+                    @empty
+                        <option value="">レースデータがありません</option>
+                    @endforelse
+                </select>
+            </form>
+            @if (!empty($selectedRace))
+                <p class="mb-4 text-sm text-gray-600">
+                    対象: {{ $selectedRace->race_date }} / {{ $selectedRace->name }}
+                </p>
+            @endif
+        @endif
+
+        <div class="mb-6 flex flex-wrap gap-2">
+            <a href="{{ route('stats.index', ['view' => $viewMode ?? 'user', 'role' => 'all', 'race_id' => ($viewMode ?? 'user') === 'race' ? $selectedRaceId : null]) }}"
                 class="rounded-full px-4 py-2 text-sm font-medium transition
                 {{ $roleFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 ring-1 ring-gray-300 hover:bg-gray-50' }}">
                 全体
             </a>
-            <a href="{{ route('stats.index', ['role' => 'streamer']) }}"
+            <a href="{{ route('stats.index', ['view' => $viewMode ?? 'user', 'role' => 'streamer', 'race_id' => ($viewMode ?? 'user') === 'race' ? $selectedRaceId : null]) }}"
                 class="rounded-full px-4 py-2 text-sm font-medium transition
                 {{ $roleFilter === 'streamer' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 ring-1 ring-gray-300 hover:bg-gray-50' }}">
                 配信者
             </a>
-            <a href="{{ route('stats.index', ['role' => 'viewer']) }}"
+            <a href="{{ route('stats.index', ['view' => $viewMode ?? 'user', 'role' => 'viewer', 'race_id' => ($viewMode ?? 'user') === 'race' ? $selectedRaceId : null]) }}"
                 class="rounded-full px-4 py-2 text-sm font-medium transition
                 {{ $roleFilter === 'viewer' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 ring-1 ring-gray-300 hover:bg-gray-50' }}">
                 視聴者
@@ -52,7 +91,7 @@
                                 $arrow = $isActive ? ($currentDir === 'desc' ? '▼' : '▲') : '';
                             @endphp
                             <th class="px-6 py-3 {{ $key === 'display_name' ? 'text-left' : 'text-right' }} text-xs font-medium uppercase tracking-wider">
-                                <a href="{{ route('stats.index', ['role' => $roleFilter, 'sort' => $key, 'dir' => $nextDir]) }}"
+                                <a href="{{ route('stats.index', ['view' => $viewMode ?? 'user', 'role' => $roleFilter, 'race_id' => ($viewMode ?? 'user') === 'race' ? $selectedRaceId : null, 'sort' => $key, 'dir' => $nextDir]) }}"
                                    class="inline-flex items-center gap-1 transition {{ $isActive ? 'text-blue-700 font-semibold' : 'text-gray-600 hover:text-gray-900' }}">
                                     <span>{{ $label }}</span>
                                     <span aria-hidden="true" class="text-[10px] leading-none">{{ $arrow }}</span>
@@ -77,7 +116,7 @@
                                 };
                         @endphp
                         <tr class="cursor-pointer transition-colors duration-150 {{ $roleRowClass }}"
-                            onclick="window.location='{{ route('stats.users.show', $row->user_id) }}'">
+                            onclick="window.location='{{ ($viewMode ?? 'user') === 'race' && !empty($selectedRaceId) ? route('stats.users.race-bets', [$row->user_id, $selectedRaceId]) : route('stats.users.show', $row->user_id) }}'">
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">{{ $rankByUserId[(int)$row->user_id] ?? '-' }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                 {{ $row->display_name }}
@@ -100,17 +139,17 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-700">{{ number_format((int)$row->carry_over_amount) }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">{{ number_format((int)$row->total_amount) }}円</td>
                             <td class="px-1 py-4 whitespace-nowrap text-center">
-                                <a href="{{ route('stats.users.show', $row->user_id) }}"
+                                <a href="{{ ($viewMode ?? 'user') === 'race' && !empty($selectedRaceId) ? route('stats.users.race-bets', [$row->user_id, $selectedRaceId]) : route('stats.users.show', $row->user_id) }}"
                                    class="inline-flex items-center rounded bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-blue-700"
                                    onclick="event.stopPropagation();">
-                                    詳細
+                                    {{ ($viewMode ?? 'user') === 'race' ? '馬券詳細' : '詳細' }}
                                 </a>
                             </td>
                         </tr>
                     @empty
                         <tr>
                             <td colspan="10" class="px-6 py-8 text-center text-sm text-gray-500">
-                                まだ購入データがありません。
+                                {{ ($viewMode ?? 'user') === 'race' ? 'このレースの購入データがありません。' : 'まだ購入データがありません。' }}
                             </td>
                         </tr>
                     @endforelse

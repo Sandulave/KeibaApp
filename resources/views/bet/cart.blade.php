@@ -83,14 +83,22 @@
         {{-- 金額更新（0円にした行は削除される仕様） --}}
         <form id="cart-update-form" method="POST" action="{{ route('bet.cart.update', $race) }}" class="space-y-3">
             @csrf
-            <input type="hidden" name="action" value="update_amount" />
 
             <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 p-4 space-y-2">
                 <div class="hidden md:grid grid-cols-12 gap-2 text-xs text-gray-500">
                     <div class="col-span-2">券種</div>
                     <div class="col-span-6">買い目</div>
                     <div class="col-span-2">金額</div>
-                    <div class="col-span-2"></div>
+                    <div class="col-span-2 flex items-center justify-end gap-2">
+                        <button type="button" id="select-all-btn"
+                            class="rounded border border-blue-300 px-2 py-1 text-blue-700 hover:bg-blue-50">
+                            全選択
+                        </button>
+                        <button type="button" id="clear-select-btn"
+                            class="rounded border border-gray-300 px-2 py-1 text-gray-700 hover:bg-gray-50">
+                            クリア
+                        </button>
+                    </div>
                 </div>
 
                 @forelse($displayItems as $item)
@@ -115,22 +123,15 @@
                             </div>
                         </div>
 
-                        <div class="md:col-span-2 flex justify-end md:justify-end gap-2">
+                        <div class="md:col-span-2 grid grid-cols-2 items-center gap-2">
                             <button type="submit"
-                                class="text-xs rounded bg-blue-600 text-white px-2 py-1 hover:bg-blue-700">
+                                name="action"
+                                value="update_amount"
+                                class="justify-self-start text-xs rounded bg-blue-600 text-white px-2 py-1 hover:bg-blue-700">
                                 金額更新
                             </button>
-
-                            {{-- 行削除 --}}
-                            <button type="submit"
-                                formaction="{{ route('bet.cart.update', $race) }}?index={{ $i }}"
-                                formmethod="POST"
-                                name="action"
-                                value="remove"
-                                class="text-xs rounded bg-gray-100 px-2 py-1 hover:bg-gray-200"
-                                onclick="return confirm('この買い目を削除しますか？')">
-                                削除
-                            </button>
+                            <input type="checkbox" name="selected_indexes[]" value="{{ $i }}"
+                                class="js-row-select justify-self-center h-5 w-5 rounded border-2 border-gray-400 text-blue-600 focus:ring-2 focus:ring-blue-500">
                         </div>
                     </div>
                 @empty
@@ -145,20 +146,44 @@
 
                 {{-- 上段：全削除 / 追加 --}}
                 <div class="flex flex-wrap gap-2">
+                    <a href="{{ route('bet.types', $race) }}"
+                        class="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
+                        買い目を追加する
+                    </a>
+
+                    <button type="submit"
+                        form="cart-update-form"
+                        formaction="{{ route('bet.cart.update', $race) }}"
+                        formmethod="POST"
+                        name="action"
+                        value="selected_remove"
+                        class="rounded bg-white px-4 py-2 text-gray-900 ring-1 ring-gray-200 hover:bg-gray-50 disabled:opacity-50"
+                        @disabled($totalCount === 0)
+                        onclick="return confirm('選択した買い目を削除しますか？')">
+                        選択した項目を削除
+                    </button>
+
+                    <button type="submit"
+                        form="cart-update-form"
+                        formaction="{{ route('bet.cart.update', $race) }}"
+                        formmethod="POST"
+                        name="action"
+                        value="unselected_remove"
+                        class="rounded bg-white px-4 py-2 text-gray-900 ring-1 ring-gray-200 hover:bg-gray-50 disabled:opacity-50"
+                        @disabled($totalCount === 0)
+                        onclick="return confirm('選択していない買い目を削除しますか？')">
+                        選択以外を削除
+                    </button>
+
                     {{-- 全削除は update フォームに投げる --}}
-                    <form method="POST" action="{{ route('bet.cart.update', $race) }}">
+                    <form method="POST" action="{{ route('bet.cart.update', $race) }}" class="ml-2">
                         @csrf
                         <button type="submit" name="action" value="clear"
-                            class="rounded bg-gray-200 px-4 py-2 text-gray-900 hover:bg-gray-300"
+                            class="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
                             onclick="return confirm('カートを空にしますか？')">
                             全削除
                         </button>
                     </form>
-
-                    <a href="{{ route('bet.types', $race) }}"
-                        class="rounded bg-white px-4 py-2 text-gray-900 ring-1 ring-gray-200 hover:bg-gray-50">
-                        買い目を追加する
-                    </a>
                 </div>
 
                 {{-- 下段：確定（DB登録） --}}
@@ -183,6 +208,9 @@
 
             const inputs = document.querySelectorAll('.amount-input');
             const totalDisplay = document.getElementById('totalAmountDisplay');
+            const selectAllBtn = document.getElementById('select-all-btn');
+            const clearSelectBtn = document.getElementById('clear-select-btn');
+            const rowSelects = document.querySelectorAll('.js-row-select');
 
             function updateTotal() {
                 let total = 0;
@@ -198,6 +226,22 @@
             inputs.forEach(input => {
                 input.addEventListener('input', updateTotal);
             });
+
+            if (selectAllBtn) {
+                selectAllBtn.addEventListener('click', () => {
+                    rowSelects.forEach((checkbox) => {
+                        checkbox.checked = true;
+                    });
+                });
+            }
+
+            if (clearSelectBtn) {
+                clearSelectBtn.addEventListener('click', () => {
+                    rowSelects.forEach((checkbox) => {
+                        checkbox.checked = false;
+                    });
+                });
+            }
 
         });
     </script>

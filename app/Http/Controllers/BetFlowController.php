@@ -93,6 +93,12 @@ class BetFlowController extends Controller
             $action = 'remove';
         }
 
+        $selectedIndexes = collect($request->input('selected_indexes', []))
+            ->map(fn ($v) => (int) $v)
+            ->filter(fn (int $v) => $v >= 0)
+            ->unique()
+            ->values();
+
         // 金額更新（0円は削除）
         if ($action === 'update_amount') {
             $amountMax = (int) config('domain.bet.amount.max', 1_000_000);
@@ -114,12 +120,33 @@ class BetFlowController extends Controller
 
             foreach ($cart['items'] as $i => $item) {
                 if (isset($validated['items'][$i]['amount'])) {
-                    $cart['items'][$i]['amount'] = (int)$validated['items'][$i]['amount'];
+                    $oldAmount = (int) ($cart['items'][$i]['amount'] ?? 0);
+                    $newAmount = (int) $validated['items'][$i]['amount'];
+                    $cart['items'][$i]['amount'] = $newAmount;
+
+                    if ($oldAmount !== $newAmount) {
+                        $cart['amount_changes'][] = [
+                            'bet_type' => (string) ($cart['items'][$i]['bet_type'] ?? ''),
+                            'selection_key' => (string) ($cart['items'][$i]['selection_key'] ?? ''),
+                            'old_amount' => $oldAmount,
+                            'new_amount' => $newAmount,
+                            'changed_at' => now()->toIso8601String(),
+                            'changed_by' => 'cart_update',
+                        ];
+                    }
                 }
             }
 
             // 0円は行ごと削除（気持ちいい）
+            $removedItems = collect($cart['items'])
+                ->filter(fn ($row) => (int) ($row['amount'] ?? 0) === 0)
+                ->map(fn (array $row) => $this->buildRemovedItemLog($row, 'update_amount_zero'))
+                ->filter()
+                ->values()
+                ->all();
+
             $cart['items'] = array_values(array_filter($cart['items'], fn($row) => (int)$row['amount'] > 0));
+            $cart['removed_items'] = array_values(array_merge($cart['removed_items'] ?? [], $removedItems));
 
             session([$cartKey => $cart]);
             return redirect()->route('bet.cart', $race)->with('success', '金額を更新しました');
@@ -133,8 +160,12 @@ class BetFlowController extends Controller
 
             $index = (int)$validated['index'];
             if (isset($cart['items'][$index])) {
+                $removed = $this->buildRemovedItemLog($cart['items'][$index], 'remove');
                 unset($cart['items'][$index]);
                 $cart['items'] = array_values($cart['items']);
+                if ($removed !== null) {
+                    $cart['removed_items'] = array_values(array_merge($cart['removed_items'] ?? [], [$removed]));
+                }
                 session([$cartKey => $cart]);
             }
 
@@ -145,6 +176,55 @@ class BetFlowController extends Controller
         if ($action === 'clear') {
             session()->forget($cartKey);
             return redirect()->route('bet.cart', $race)->with('success', 'カートを空にしました');
+        }
+
+        // 選択削除
+        if ($action === 'selected_remove') {
+            if ($selectedIndexes->isEmpty()) {
+                return redirect()->route('bet.cart', $race)->with('error', '削除対象を選択してください。');
+            }
+
+            $removedItems = collect($cart['items'])
+                ->filter(fn ($row, $idx) => $selectedIndexes->contains((int) $idx))
+                ->map(fn (array $row) => $this->buildRemovedItemLog($row, 'selected_remove'))
+                ->filter()
+                ->values()
+                ->all();
+
+            $cart['items'] = collect($cart['items'])
+                ->reject(fn ($row, $idx) => $selectedIndexes->contains((int) $idx))
+                ->values()
+                ->all();
+
+            $cart['removed_items'] = array_values(array_merge($cart['removed_items'] ?? [], $removedItems));
+
+            session([$cartKey => $cart]);
+
+            return redirect()->route('bet.cart', $race)->with('success', '選択した買い目を削除しました');
+        }
+
+        // 選択以外削除
+        if ($action === 'unselected_remove') {
+            if ($selectedIndexes->isEmpty()) {
+                return redirect()->route('bet.cart', $race)->with('error', '残したい買い目を選択してください。');
+            }
+
+            $removedItems = collect($cart['items'])
+                ->reject(fn ($row, $idx) => $selectedIndexes->contains((int) $idx))
+                ->map(fn (array $row) => $this->buildRemovedItemLog($row, 'unselected_remove'))
+                ->filter()
+                ->values()
+                ->all();
+
+            $cart['items'] = collect($cart['items'])
+                ->filter(fn ($row, $idx) => $selectedIndexes->contains((int) $idx))
+                ->values()
+                ->all();
+            $cart['removed_items'] = array_values(array_merge($cart['removed_items'] ?? [], $removedItems));
+
+            session([$cartKey => $cart]);
+
+            return redirect()->route('bet.cart', $race)->with('success', '選択以外の買い目を削除しました');
         }
 
         return redirect()->route('bet.cart', $race);
@@ -184,7 +264,20 @@ class BetFlowController extends Controller
 
             foreach ($cart['items'] as $i => $item) {
                 if (isset($validated['items'][$i]['amount'])) {
-                    $cart['items'][$i]['amount'] = (int) $validated['items'][$i]['amount'];
+                    $oldAmount = (int) ($cart['items'][$i]['amount'] ?? 0);
+                    $newAmount = (int) $validated['items'][$i]['amount'];
+                    $cart['items'][$i]['amount'] = $newAmount;
+
+                    if ($oldAmount !== $newAmount) {
+                        $cart['amount_changes'][] = [
+                            'bet_type' => (string) ($cart['items'][$i]['bet_type'] ?? ''),
+                            'selection_key' => (string) ($cart['items'][$i]['selection_key'] ?? ''),
+                            'old_amount' => $oldAmount,
+                            'new_amount' => $newAmount,
+                            'changed_at' => now()->toIso8601String(),
+                            'changed_by' => 'commit',
+                        ];
+                    }
                 }
             }
 
@@ -395,8 +488,50 @@ class BetFlowController extends Controller
 
     private function buildSnapshotFromCart(array $cart): array
     {
+        $cartItems = collect($cart['items'] ?? [])
+            ->map(function (array $row) {
+                $betType = (string) ($row['bet_type'] ?? '');
+                $selectionKey = (string) ($row['selection_key'] ?? '');
+
+                return [
+                    'key' => $this->itemKey($betType, $selectionKey),
+                    'bet_type' => $betType,
+                    'selection_key' => $selectionKey,
+                    'amount' => (int) ($row['amount'] ?? 0),
+                ];
+            })
+            ->filter(fn (array $row) => $row['bet_type'] !== '' && $row['selection_key'] !== '')
+            ->values();
+
+        $itemsByKey = $cartItems->keyBy('key');
+
         $groups = collect($cart['groups'] ?? [])
-            ->map(function (array $group) {
+            ->map(function (array $group) use ($itemsByKey) {
+                $itemKeys = collect($group['item_keys'] ?? [])
+                    ->map(fn ($key) => (string) $key)
+                    ->filter()
+                    ->unique()
+                    ->values();
+
+                // 追加時に保持した item_keys を使って、現在カートの実体に追従させる。
+                // これにより、一部削除後でも point_count / total_amount がズレない。
+                if ($itemKeys->isNotEmpty()) {
+                    $groupItems = $itemKeys
+                        ->map(fn (string $key) => $itemsByKey->get($key))
+                        ->filter()
+                        ->values()
+                        ->all();
+
+                    return [
+                        'bet_type' => (string) ($group['bet_type'] ?? ''),
+                        'mode' => (string) ($group['mode'] ?? ''),
+                        'input' => is_array($group['input'] ?? null) ? $group['input'] : [],
+                        'point_count' => count($groupItems),
+                        'unit_amount' => $this->detectUnitAmount($groupItems),
+                        'total_amount' => (int) collect($groupItems)->sum(fn (array $row) => (int) ($row['amount'] ?? 0)),
+                    ];
+                }
+
                 return [
                     'bet_type' => (string) ($group['bet_type'] ?? ''),
                     'mode' => (string) ($group['mode'] ?? ''),
@@ -435,6 +570,29 @@ class BetFlowController extends Controller
         return [
             'version' => 1,
             'groups' => $groups,
+            'removed_items' => collect($cart['removed_items'] ?? [])
+                ->map(fn (array $row) => [
+                    'bet_type' => (string) ($row['bet_type'] ?? ''),
+                    'selection_key' => (string) ($row['selection_key'] ?? ''),
+                    'amount' => (int) ($row['amount'] ?? 0),
+                    'removed_at' => (string) ($row['removed_at'] ?? ''),
+                    'removed_by' => (string) ($row['removed_by'] ?? 'selected_remove'),
+                ])
+                ->filter(fn (array $row) => $row['bet_type'] !== '' && $row['selection_key'] !== '')
+                ->values()
+                ->all(),
+            'amount_changes' => collect($cart['amount_changes'] ?? [])
+                ->map(fn (array $row) => [
+                    'bet_type' => (string) ($row['bet_type'] ?? ''),
+                    'selection_key' => (string) ($row['selection_key'] ?? ''),
+                    'old_amount' => (int) ($row['old_amount'] ?? 0),
+                    'new_amount' => (int) ($row['new_amount'] ?? 0),
+                    'changed_at' => (string) ($row['changed_at'] ?? ''),
+                    'changed_by' => (string) ($row['changed_by'] ?? ''),
+                ])
+                ->filter(fn (array $row) => $row['bet_type'] !== '' && $row['selection_key'] !== '' && $row['old_amount'] !== $row['new_amount'])
+                ->values()
+                ->all(),
         ];
     }
 
@@ -477,5 +635,23 @@ class BetFlowController extends Controller
     private function itemKey(string $betType, string $selectionKey): string
     {
         return $betType . '|' . $selectionKey;
+    }
+
+    private function buildRemovedItemLog(array $row, string $removedBy): ?array
+    {
+        $betType = (string) ($row['bet_type'] ?? '');
+        $selectionKey = (string) ($row['selection_key'] ?? '');
+
+        if ($betType === '' || $selectionKey === '') {
+            return null;
+        }
+
+        return [
+            'bet_type' => $betType,
+            'selection_key' => $selectionKey,
+            'amount' => (int) ($row['amount'] ?? 0),
+            'removed_at' => now()->toIso8601String(),
+            'removed_by' => $removedBy,
+        ];
     }
 }
