@@ -35,7 +35,6 @@ class StatsFeatureTest extends TestCase
         $response = $this->actingAs($user)->post(route('stats.users.adjustments.update', $user), [
             'race_id' => $race->id,
             'bonus_points' => 1200,
-            'carry_over_amount' => 3400,
         ]);
 
         $response->assertRedirect();
@@ -43,30 +42,46 @@ class StatsFeatureTest extends TestCase
             'user_id' => $user->id,
             'race_id' => $race->id,
             'bonus_points' => 1200,
-            'carry_over_amount' => 3400,
         ]);
     }
 
-    public function test_owner_can_update_negative_carry_over_amount_in_100_yen_units(): void
+    public function test_bonus_points_update_adjusts_current_balance_by_delta(): void
     {
         $user = User::factory()->create([
             'role' => 'user',
             'audience_role' => 'viewer',
+            'current_balance' => 10000,
         ]);
         $race = $this->createRace();
 
-        $response = $this->actingAs($user)->post(route('stats.users.adjustments.update', $user), [
-            'race_id' => $race->id,
-            'bonus_points' => 1000,
-            'carry_over_amount' => -500,
-        ]);
-
-        $response->assertRedirect();
-        $this->assertDatabaseHas('race_user_adjustments', [
+        RaceUserAdjustment::create([
             'user_id' => $user->id,
             'race_id' => $race->id,
             'bonus_points' => 1000,
-            'carry_over_amount' => -500,
+            'challenge_choice' => 'normal',
+            'challenge_chosen_at' => now(),
+        ]);
+
+        $this->actingAs($user)->post(route('stats.users.adjustments.update', $user), [
+            'race_id' => $race->id,
+            'bonus_points' => 1600,
+            'challenge_choice' => 'normal',
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'current_balance' => 10600,
+        ]);
+
+        $this->actingAs($user)->post(route('stats.users.adjustments.update', $user), [
+            'race_id' => $race->id,
+            'bonus_points' => 400,
+            'challenge_choice' => 'normal',
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'current_balance' => 9400,
         ]);
     }
 
@@ -81,7 +96,6 @@ class StatsFeatureTest extends TestCase
         $response = $this->actingAs($user)->post(route('stats.users.adjustments.update', $user), [
             'race_id' => $race->id,
             'bonus_points' => -55,
-            'carry_over_amount' => 100,
         ]);
 
         $response->assertRedirect();
@@ -89,28 +103,7 @@ class StatsFeatureTest extends TestCase
             'user_id' => $user->id,
             'race_id' => $race->id,
             'bonus_points' => -55,
-            'carry_over_amount' => 100,
         ]);
-    }
-
-    public function test_carry_over_amount_must_be_multiple_of_100(): void
-    {
-        $user = User::factory()->create([
-            'role' => 'user',
-            'audience_role' => 'viewer',
-        ]);
-        $race = $this->createRace();
-
-        $response = $this->from(route('stats.users.show', $user))
-            ->actingAs($user)
-            ->post(route('stats.users.adjustments.update', $user), [
-                'race_id' => $race->id,
-                'bonus_points' => 1000,
-                'carry_over_amount' => -550,
-            ]);
-
-        $response->assertRedirect(route('stats.users.show', $user));
-        $response->assertSessionHasErrors('carry_over_amount');
     }
 
     public function test_kannrisyato_is_redirected_to_races_on_dashboard(): void
@@ -131,7 +124,6 @@ class StatsFeatureTest extends TestCase
         $response = $this->actingAs($other)->post(route('stats.users.adjustments.update', $owner), [
             'race_id' => $race->id,
             'bonus_points' => 1,
-            'carry_over_amount' => 2,
         ]);
 
         $response->assertForbidden();
@@ -150,7 +142,6 @@ class StatsFeatureTest extends TestCase
         $response = $this->actingAs($admin)->post(route('stats.users.adjustments.update', $owner), [
             'race_id' => $race->id,
             'bonus_points' => 500,
-            'carry_over_amount' => 700,
         ]);
 
         $response->assertRedirect();
@@ -158,7 +149,6 @@ class StatsFeatureTest extends TestCase
             'user_id' => $owner->id,
             'race_id' => $race->id,
             'bonus_points' => 500,
-            'carry_over_amount' => 700,
         ]);
     }
 
@@ -171,7 +161,6 @@ class StatsFeatureTest extends TestCase
         $response = $this->actingAs($kannrisya)->post(route('stats.users.adjustments.update', $owner), [
             'race_id' => $race->id,
             'bonus_points' => 900,
-            'carry_over_amount' => 100,
         ]);
 
         $response->assertRedirect();
@@ -179,7 +168,6 @@ class StatsFeatureTest extends TestCase
             'user_id' => $owner->id,
             'race_id' => $race->id,
             'bonus_points' => 900,
-            'carry_over_amount' => 100,
         ]);
     }
 
@@ -211,7 +199,6 @@ class StatsFeatureTest extends TestCase
             'user_id' => $owner->id,
             'race_id' => $race->id,
             'bonus_points' => 0,
-            'carry_over_amount' => 0,
         ]);
 
         $response = $this->actingAs($viewer)->get(route('stats.users.race-bets', [$owner, $race]));
@@ -227,9 +214,9 @@ class StatsFeatureTest extends TestCase
         $viewer = User::factory()->create(['role' => 'user']);
         $race = $this->createRace();
 
-        $userA = User::factory()->create(['role' => 'user']);
-        $userB = User::factory()->create(['role' => 'user']);
-        $userC = User::factory()->create(['role' => 'user']);
+        $userA = User::factory()->create(['role' => 'user', 'current_balance' => 900]);
+        $userB = User::factory()->create(['role' => 'user', 'current_balance' => 900]);
+        $userC = User::factory()->create(['role' => 'user', 'current_balance' => 900]);
 
         Bet::create([
             'user_id' => $userA->id,
@@ -260,27 +247,24 @@ class StatsFeatureTest extends TestCase
             'user_id' => $userA->id,
             'race_id' => $race->id,
             'bonus_points' => 300,
-            'carry_over_amount' => 100,
         ]);
         RaceUserAdjustment::create([
             'user_id' => $userB->id,
             'race_id' => $race->id,
             'bonus_points' => 100,
-            'carry_over_amount' => 100,
         ]);
         RaceUserAdjustment::create([
             'user_id' => $userC->id,
             'race_id' => $race->id,
             'bonus_points' => 0,
-            'carry_over_amount' => 0,
         ]);
 
-        // totals: A=1000, B=1000, C=900 -> A/B tie is resolved by stake asc so B then A.
+        // balances: A=900, B=900, C=900 -> tie is resolved by stake asc so B, C, A.
         $response = $this->actingAs($viewer)->get(route('stats.index'));
 
         $response->assertOk();
         $response->assertViewHas('rows', function ($rows) use ($userA, $userB, $userC) {
-            return $rows->pluck('user_id')->values()->all() === [$userB->id, $userA->id, $userC->id];
+            return $rows->pluck('user_id')->values()->all() === [$userB->id, $userC->id, $userA->id];
         });
     }
 
@@ -289,9 +273,9 @@ class StatsFeatureTest extends TestCase
         $viewer = User::factory()->create(['role' => 'user']);
         $race = $this->createRace();
 
-        $userA = User::factory()->create(['role' => 'user']); // total=1000
-        $userB = User::factory()->create(['role' => 'user']); // total=900
-        $userC = User::factory()->create(['role' => 'user']); // total=500
+        $userA = User::factory()->create(['role' => 'user', 'current_balance' => 1000]); // total=1000
+        $userB = User::factory()->create(['role' => 'user', 'current_balance' => 900]); // total=900
+        $userC = User::factory()->create(['role' => 'user', 'current_balance' => 500]); // total=500
 
         Bet::create([
             'user_id' => $userA->id,
@@ -322,19 +306,16 @@ class StatsFeatureTest extends TestCase
             'user_id' => $userA->id,
             'race_id' => $race->id,
             'bonus_points' => 200,
-            'carry_over_amount' => 0,
         ]);
         RaceUserAdjustment::create([
             'user_id' => $userB->id,
             'race_id' => $race->id,
             'bonus_points' => 0,
-            'carry_over_amount' => 0,
         ]);
         RaceUserAdjustment::create([
             'user_id' => $userC->id,
             'race_id' => $race->id,
             'bonus_points' => 0,
-            'carry_over_amount' => 0,
         ]);
 
         $response = $this->actingAs($viewer)->get(route('stats.index', [

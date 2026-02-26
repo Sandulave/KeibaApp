@@ -34,7 +34,6 @@ class StatsController extends Controller
             'total_return',
             'roi_percent',
             'bonus_points',
-            'carry_over_amount',
             'display_name',
         ];
         if (!in_array($sortKey, $allowedSortKeys, true)) {
@@ -70,6 +69,7 @@ class StatsController extends Controller
                         'users.id as user_id',
                         'users.name as user_name',
                         'users.display_name as user_display_name',
+                        'users.current_balance as current_balance',
                         'users.role as user_role',
                         'users.audience_role as user_audience_role',
                         DB::raw('COUNT(bets.id) as bet_count'),
@@ -77,7 +77,6 @@ class StatsController extends Controller
                         DB::raw('COALESCE(SUM(bets.return_amount), 0) as total_return'),
                         DB::raw('COALESCE(SUM(bets.hit_count), 0) as total_hits'),
                         DB::raw('COALESCE(MAX(rua.bonus_points), 0) as bonus_points'),
-                        DB::raw('COALESCE(MAX(rua.carry_over_amount), 0) as carry_over_amount'),
                     ])
                     ->join('users', 'users.id', '=', 'bets.user_id')
                     ->leftJoin('race_user_adjustments as rua', function ($join) use ($selectedRaceId) {
@@ -86,7 +85,7 @@ class StatsController extends Controller
                     })
                     ->where('bets.race_id', $selectedRaceId)
                     ->whereNotIn('users.role', $adminRoles)
-                    ->groupBy('users.id', 'users.name', 'users.display_name', 'users.role', 'users.audience_role')
+                    ->groupBy('users.id', 'users.name', 'users.display_name', 'users.current_balance', 'users.role', 'users.audience_role')
                     ->orderByDesc(DB::raw('COALESCE(SUM(bets.return_amount), 0)'))
                     ->orderBy('users.id');
 
@@ -117,8 +116,7 @@ class StatsController extends Controller
                         $betCount = (int)$row->bet_count;
                         $hitCount = (int)$row->total_hits;
                         $bonusPoints = (int)($row->bonus_points ?? 0);
-                        $carryOverAmount = (int)($row->carry_over_amount ?? 0);
-                        $totalAdjustment = $bonusPoints + $carryOverAmount;
+                        $totalAdjustment = $bonusPoints;
 
                         $row->roi_percent = $stake > 0
                             ? round(($return / $stake) * 100, 2)
@@ -130,10 +128,9 @@ class StatsController extends Controller
                         $row->audience_role_label = $this->audienceRoleLabel($row->user_audience_role, $row->user_role);
                         $row->profit_amount = $return - $stake;
                         $row->bonus_points = $bonusPoints;
-                        $row->carry_over_amount = $carryOverAmount;
-                        $row->total_amount = $return + $totalAdjustment;
+                        $row->total_amount = (int) ($row->current_balance ?? 0);
                         $row->total_score = $stake > 0
-                            ? round((($return + $totalAdjustment) / $stake) * 100, 2)
+                            ? round(($row->total_amount / $stake) * 100, 2)
                             : null;
 
                         return $row;
@@ -147,6 +144,7 @@ class StatsController extends Controller
                     'users.id as user_id',
                     'users.name as user_name',
                     'users.display_name as user_display_name',
+                    'users.current_balance as current_balance',
                     'users.role as user_role',
                     'users.audience_role as user_audience_role',
                     DB::raw('COUNT(bets.id) as bet_count'),
@@ -156,7 +154,7 @@ class StatsController extends Controller
                 ])
                 ->join('users', 'users.id', '=', 'bets.user_id')
                 ->whereNotIn('users.role', $adminRoles)
-                ->groupBy('users.id', 'users.name', 'users.display_name', 'users.role', 'users.audience_role')
+                ->groupBy('users.id', 'users.name', 'users.display_name', 'users.current_balance', 'users.role', 'users.audience_role')
                 ->orderByDesc(DB::raw('COALESCE(SUM(bets.return_amount), 0)'))
                 ->orderBy('users.id');
 
@@ -183,7 +181,6 @@ class StatsController extends Controller
                 ->select([
                     'user_id',
                     DB::raw('COALESCE(SUM(bonus_points), 0) as total_bonus_points'),
-                    DB::raw('COALESCE(SUM(carry_over_amount), 0) as total_carry_over_amount'),
                 ])
                 ->groupBy('user_id')
                 ->get()
@@ -198,8 +195,7 @@ class StatsController extends Controller
                     $hitCount = (int)$row->total_hits;
                     $adjustment = $adjustmentByUser->get($row->user_id);
                     $bonusPoints = (int)($adjustment->total_bonus_points ?? 0);
-                    $carryOverAmount = (int)($adjustment->total_carry_over_amount ?? 0);
-                    $totalAdjustment = $bonusPoints + $carryOverAmount;
+                    $totalAdjustment = $bonusPoints;
 
                     $row->roi_percent = $stake > 0
                         ? round(($return / $stake) * 100, 2)
@@ -211,10 +207,9 @@ class StatsController extends Controller
                     $row->audience_role_label = $this->audienceRoleLabel($row->user_audience_role, $row->user_role);
                     $row->profit_amount = $return - $stake;
                     $row->bonus_points = $bonusPoints;
-                    $row->carry_over_amount = $carryOverAmount;
-                    $row->total_amount = $return + $totalAdjustment;
+                    $row->total_amount = (int) ($row->current_balance ?? 0);
                     $row->total_score = $stake > 0
-                        ? round((($return + $totalAdjustment) / $stake) * 100, 2)
+                        ? round(($row->total_amount / $stake) * 100, 2)
                         : null;
 
                     return $row;
@@ -269,18 +264,23 @@ class StatsController extends Controller
             ? round(($totalReturn / $totalStake) * 100, 2)
             : null;
         $bonusPoints = (int)(RaceUserAdjustment::where('user_id', $user->id)->sum('bonus_points'));
-        $carryOverAmount = (int)(RaceUserAdjustment::where('user_id', $user->id)->sum('carry_over_amount'));
-        $totalAdjustment = $bonusPoints + $carryOverAmount;
+        $totalAdjustment = $bonusPoints;
         $totalScore = $totalStake > 0
             ? round((($totalReturn + $totalAdjustment) / $totalStake) * 100, 2)
             : null;
 
-        $raceRows = Bet::query()
-            ->where('bets.user_id', $user->id)
-            ->join('races', 'races.id', '=', 'bets.race_id')
+        $raceRows = Race::query()
+            ->leftJoin('bets', function ($join) use ($user) {
+                $join->on('bets.race_id', '=', 'races.id')
+                    ->where('bets.user_id', '=', $user->id);
+            })
             ->leftJoin('race_user_adjustments as rua', function ($join) use ($user) {
                 $join->on('rua.race_id', '=', 'races.id')
                     ->where('rua.user_id', '=', $user->id);
+            })
+            ->where(function ($q) {
+                $q->whereNotNull('bets.id')
+                    ->orWhereNotNull('rua.challenge_choice');
             })
             ->select([
                 'races.id as race_id',
@@ -292,7 +292,7 @@ class StatsController extends Controller
                 DB::raw('COALESCE(SUM(bets.return_amount), 0) as total_return'),
                 DB::raw('COALESCE(SUM(bets.hit_count), 0) as total_hits'),
                 DB::raw('COALESCE(MAX(rua.bonus_points), 0) as bonus_points'),
-                DB::raw('COALESCE(MAX(rua.carry_over_amount), 0) as carry_over_amount'),
+                DB::raw('MAX(rua.challenge_choice) as challenge_choice'),
             ])
             ->groupBy('races.id', 'races.name', 'races.race_date', 'races.is_betting_closed')
             ->orderBy('races.race_date')
@@ -302,8 +302,7 @@ class StatsController extends Controller
                 $stake = (int)$row->total_stake;
                 $return = (int)$row->total_return;
                 $bonus = (int)$row->bonus_points;
-                $carryOver = (int)$row->carry_over_amount;
-                $adj = $bonus + $carryOver;
+                $adj = $bonus;
 
                 $row->roi_percent = $stake > 0
                     ? round(($return / $stake) * 100, 2)
@@ -324,7 +323,7 @@ class StatsController extends Controller
             'totalReturn' => $totalReturn,
             'overallRoi' => $overallRoi,
             'bonusPoints' => $bonusPoints,
-            'carryOverAmount' => $carryOverAmount,
+            'currentBalance' => (int) ($user->current_balance ?? 0),
             'totalAdjustment' => $totalAdjustment,
             'totalScore' => $totalScore,
             'raceRows' => $raceRows,
@@ -345,7 +344,7 @@ class StatsController extends Controller
         $validated = $request->validate([
             'race_id' => ['required', 'integer', 'exists:races,id'],
             'bonus_points' => ['required', 'integer', "between:-{$adjustmentMax},{$adjustmentMax}"],
-            'carry_over_amount' => ['required', 'integer', "between:-{$adjustmentMax},{$adjustmentMax}", 'multiple_of:100'],
+            'challenge_choice' => ['nullable', 'in:normal,challenge'],
             'note' => ['nullable', 'string', 'max:255'],
         ], [
             'race_id.required' => '対象レースを指定してください。',
@@ -353,33 +352,73 @@ class StatsController extends Controller
             'bonus_points.required' => 'ボーナスPTを入力してください。',
             'bonus_points.integer' => 'ボーナスPTは数値で入力してください。',
             'bonus_points.between' => "ボーナスPTは-{$adjustmentMax}〜{$adjustmentMax}の範囲で入力してください。",
-            'carry_over_amount.required' => '繰越金を入力してください。',
-            'carry_over_amount.integer' => '繰越金は数値で入力してください。',
-            'carry_over_amount.between' => "繰越金は-{$adjustmentMax}〜{$adjustmentMax}の範囲で入力してください。",
-            'carry_over_amount.multiple_of' => '繰越金は100円単位で入力してください。',
+            'challenge_choice.in' => '勝負レースの選択が不正です。',
             'note.max' => 'メモは255文字以内で入力してください。',
         ]);
 
-        RaceUserAdjustment::updateOrCreate(
-            [
-                'user_id' => $user->id,
-                'race_id' => (int)$validated['race_id'],
-            ],
-            [
-                'bonus_points' => (int)$validated['bonus_points'],
-                'carry_over_amount' => (int)$validated['carry_over_amount'],
+        DB::transaction(function () use ($validated, $user) {
+            $raceId = (int) $validated['race_id'];
+            $updateValues = [
+                'bonus_points' => (int) $validated['bonus_points'],
                 'note' => $validated['note'] ?? null,
-            ]
-        );
+            ];
+
+            $existingAdjustment = RaceUserAdjustment::query()
+                ->where('user_id', $user->id)
+                ->where('race_id', $raceId)
+                ->lockForUpdate()
+                ->first();
+            $oldChoice = $existingAdjustment?->challenge_choice;
+            $oldBonusPoints = (int) ($existingAdjustment?->bonus_points ?? 0);
+
+            if (array_key_exists('challenge_choice', $validated)) {
+                $updateValues['challenge_choice'] = $validated['challenge_choice'] !== null && $validated['challenge_choice'] !== ''
+                    ? (string) $validated['challenge_choice']
+                    : null;
+                $updateValues['challenge_chosen_at'] = $updateValues['challenge_choice'] !== null ? now() : null;
+            }
+
+            $updatedAdjustment = RaceUserAdjustment::updateOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'race_id' => $raceId,
+                ],
+                $updateValues
+            );
+
+            $newChoice = $updatedAdjustment->challenge_choice;
+            $choiceDelta = 0;
+            if ($oldChoice === 'normal' && $newChoice === 'challenge') {
+                $choiceDelta = 20_000;
+            } elseif ($oldChoice === 'challenge' && $newChoice === 'normal') {
+                $choiceDelta = -20_000;
+            }
+            $newBonusPoints = (int) ($updatedAdjustment->bonus_points ?? 0);
+            $bonusDelta = $newBonusPoints - $oldBonusPoints;
+            $delta = $choiceDelta + $bonusDelta;
+
+            if ($delta !== 0) {
+                $targetUser = User::query()
+                    ->whereKey($user->id)
+                    ->lockForUpdate()
+                    ->first();
+                if ($targetUser !== null) {
+                    $targetUser->current_balance = (int) ($targetUser->current_balance ?? 0) + $delta;
+                    $targetUser->save();
+                }
+            }
+        });
 
         if ($request->expectsJson()) {
+            $freshUser = User::query()->find($user->id);
             return response()->json([
                 'ok' => true,
-                'message' => 'ボーナスPTと繰越金を更新しました。',
+                'message' => 'ボーナスPT・勝負レースを更新しました。',
+                'current_balance' => (int) ($freshUser?->current_balance ?? 0),
             ]);
         }
 
-        return back()->with('success', 'ボーナスPTと繰越金を更新しました。');
+        return back()->with('success', 'ボーナスPT・勝負レースを更新しました。');
     }
 
     public function raceBets(User $user, Race $race)
@@ -611,25 +650,55 @@ class StatsController extends Controller
         }
 
         DB::transaction(function () use ($user, $raceId) {
+            $targetUser = User::query()
+                ->whereKey($user->id)
+                ->lockForUpdate()
+                ->first();
+
+            $stakeTotal = (int) Bet::query()
+                ->where('user_id', $user->id)
+                ->where('race_id', $raceId)
+                ->sum('stake_amount');
+
+            $adjustment = RaceUserAdjustment::query()
+                ->where('user_id', $user->id)
+                ->where('race_id', $raceId)
+                ->lockForUpdate()
+                ->first();
+            $challengeChoice = $adjustment?->challenge_choice;
+            $allowanceDelta = match ($challengeChoice) {
+                'challenge' => -30_000,
+                'normal' => -10_000,
+                default => 0,
+            };
+
             Bet::query()
                 ->where('user_id', $user->id)
                 ->where('race_id', $raceId)
                 ->delete();
 
-            RaceUserAdjustment::query()
-                ->where('user_id', $user->id)
-                ->where('race_id', $raceId)
-                ->delete();
+            if ($adjustment !== null) {
+                $adjustment->bonus_points = 0;
+                $adjustment->challenge_choice = null;
+                $adjustment->challenge_chosen_at = null;
+                $adjustment->note = null;
+                $adjustment->save();
+            }
+
+            if ($targetUser !== null) {
+                $targetUser->current_balance = (int) ($targetUser->current_balance ?? 0) + $stakeTotal + $allowanceDelta;
+                $targetUser->save();
+            }
         });
 
         if ($request->expectsJson()) {
             return response()->json([
                 'ok' => true,
-                'message' => '対象レースの馬券・ボーナスPT・繰越金を削除しました。',
+                'message' => '対象レースの馬券・ボーナスPTを削除しました。',
             ]);
         }
 
-        return back()->with('success', '対象レースの馬券・ボーナスPT・繰越金を削除しました。');
+        return back()->with('success', '対象レースの馬券・ボーナスPTを削除しました。');
     }
 
     private function audienceRoleLabel(?string $audienceRole, string $role): string

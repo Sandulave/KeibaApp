@@ -25,6 +25,7 @@ return [
     'bet' => [
         'default_horse_count' => 18,
         'frame_max' => 8,
+        'point_count_max' => 1_000,
         'type_labels' => $betTypeLabels,
         'amount' => [
             'min' => 100,

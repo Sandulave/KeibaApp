@@ -33,11 +33,16 @@
                 </thead>
                 <tbody class="divide-y divide-gray-200">
                     @forelse($races as $race)
-                        <tr class="hover:bg-gray-50 transition-colors duration-150">
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $race->name }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ $race->race_date }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ $race->course }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        @php
+                            $isHorseCountInvalid = (int) ($race->horse_count ?? 0) <= 0;
+                            $isPurchaseDisabled = $race->is_betting_closed || $isHorseCountInvalid;
+                            $isDetailDisabled = $isHorseCountInvalid;
+                        @endphp
+                        <tr class="transition-colors duration-150 {{ $isHorseCountInvalid ? 'bg-gray-50' : 'hover:bg-gray-50' }}">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium {{ $isHorseCountInvalid ? 'text-gray-500' : 'text-gray-900' }}">{{ $race->name }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm {{ $isHorseCountInvalid ? 'text-gray-500' : 'text-gray-600' }}">{{ $race->race_date }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm {{ $isHorseCountInvalid ? 'text-gray-500' : 'text-gray-600' }}">{{ $race->course }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm {{ $isHorseCountInvalid ? 'text-gray-500' : 'text-gray-600' }}">
                                 @if (($race->payouts_count ?? 0) > 0)
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                         登録済み
@@ -47,27 +52,38 @@
                                 @endif
                                 @if ($race->is_betting_closed)
                                     <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                        投票終了
+                                        投票受付終了
+                                    </span>
+                                @endif
+                                @if ($isHorseCountInvalid)
+                                    <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
+                                        頭数未設定
                                     </span>
                                 @endif
                             </td>
-                            <td class="px-4 py-4 text-sm text-gray-600">
+                            <td class="px-4 py-4 text-sm {{ $isHorseCountInvalid ? 'text-gray-500' : 'text-gray-600' }}">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    @if ($race->is_betting_closed)
+                                    @if ($isPurchaseDisabled)
                                         <span
-                                            class="inline-flex items-center rounded-md bg-gray-300 px-3 py-1.5 text-xs font-semibold text-white cursor-not-allowed">
-                                            購入終了
+                                            class="inline-flex items-center rounded-md bg-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-500 cursor-not-allowed">
+                                            購入不可
                                         </span>
                                     @else
-                                        <a href="{{ route('bet.types', $race) }}"
+                                        <a href="{{ route('bet.challenge.select', $race) }}"
                                             class="inline-flex items-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition">
                                             購入へ
                                         </a>
                                     @endif
-                                    <a href="{{ route('stats.users.race-bets', [auth()->id(), $race->id]) }}"
-                                        class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition">
-                                        購入馬券詳細
-                                    </a>
+                                    @if ($isDetailDisabled)
+                                        <span class="inline-flex items-center rounded-md border border-gray-200 bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-500 cursor-not-allowed">
+                                            購入馬券詳細
+                                        </span>
+                                    @else
+                                        <a href="{{ route('stats.users.race-bets', [auth()->id(), $race->id]) }}"
+                                            class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition">
+                                            購入馬券詳細
+                                        </a>
+                                    @endif
                                 </div>
                             </td>
                         </tr>

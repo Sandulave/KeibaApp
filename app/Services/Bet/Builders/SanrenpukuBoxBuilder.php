@@ -12,8 +12,8 @@ class SanrenpukuBoxBuilder extends AbstractBetBuilder
 
         return array_merge(parent::rules($race), [
             // 三連複ボックス：3頭以上
-            // 上限は一旦10（重くなるなら後で絞る）
-            'horses' => ['required', 'array', 'min:3', 'max:10'],
+            // 頭数上限はレース頭数に合わせる
+            'horses' => ['required', 'array', 'min:3', "max:{$max}"],
             'horses.*' => ['required', 'integer', "between:1,{$max}", 'distinct'],
         ]);
     }

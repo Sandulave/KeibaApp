@@ -136,7 +136,7 @@
                         <div class="flex items-end justify-between mb-2 gap-2">
                             <div>
                                 <div class="text-sm font-medium">選択</div>
-                                <div class="text-xs text-gray-500">3頭以上（上限はBuilder側で制限されます）</div>
+                                <div class="text-xs text-gray-500">3頭以上</div>
                             </div>
 
                             <div class="flex gap-2">
@@ -157,7 +157,8 @@
                                 <thead class="bg-gray-50">
                                     <tr>
                                         <th class="px-3 py-2 text-left font-medium text-gray-600 w-16">枠</th>
-                                        <th class="px-3 py-2 text-left font-medium text-gray-600 w-20">馬番</th>
+                                        <th class="px-3 py-2 text-left font-medium text-gray-600 w-14">馬番</th>
+                                        <th class="px-3 py-2 text-left font-medium text-gray-600 w-40">馬名</th>
                                         <th class="px-3 py-2 text-left font-medium text-gray-600 w-44">選択</th>
                                     </tr>
                                 </thead>
@@ -180,8 +181,11 @@
                                                 </span>
                                             </td>
 
-                                            <td class="px-3 py-2 font-semibold text-gray-900">
+                                            <td class="px-2 py-2 font-semibold text-gray-900">
                                                 {{ $noStr }}
+                                            </td>
+                                            <td class="px-3 py-2 !text-left text-base font-medium text-gray-800">
+                                                {{ $horseNameByNo[$noStr] ?? '-' }}
                                             </td>
 
                                             <td class="px-3 py-2 cursor-pointer" data-col="horse"

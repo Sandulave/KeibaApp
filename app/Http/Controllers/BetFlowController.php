@@ -6,15 +6,23 @@ use App\Enums\BetType;
 use App\Models\Race;
 use App\Models\Bet;
 use App\Models\BetItem;
+use App\Models\RaceUserAdjustment;
+use App\Models\User;
 use Illuminate\Http\Request;
 use App\Services\Bet\CartService;
 use App\Services\Bet\BuilderResolver;
 use App\Services\BetSettlementService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class BetFlowController extends Controller
 {
+    private const CHALLENGE_NORMAL = 'normal';
+    private const CHALLENGE_RACE = 'challenge';
+    private const NORMAL_ALLOWANCE = 10_000;
+    private const CHALLENGE_ALLOWANCE = 30_000;
+
     private function ensureRaceBettingOpen(Race $race)
     {
         if (!$race->is_betting_closed) {
@@ -33,20 +41,111 @@ class BetFlowController extends Controller
         return "bet_cart_{$raceId}";
     }
 
+    private function challengeChoiceForUserRace(int $userId, int $raceId): ?string
+    {
+        return RaceUserAdjustment::query()
+            ->where('user_id', $userId)
+            ->where('race_id', $raceId)
+            ->value('challenge_choice');
+    }
+
+    private function ensureChallengeChoiceSelected(Race $race)
+    {
+        $choice = $this->challengeChoiceForUserRace((int) auth()->id(), (int) $race->id);
+        if ($choice !== null) {
+            return null;
+        }
+
+        return redirect()
+            ->route('bet.challenge.select', $race)
+            ->with('error', 'このレースは最初に勝負レース宣言の選択が必要です。');
+    }
+
     public function selectRace()
     {
+        $userId = (int) auth()->id();
         $races = \App\Models\Race::withCount('payouts')
             ->orderBy('race_date', 'asc')
             ->orderBy('id', 'asc')
             ->limit(100)
             ->get();
 
-        return view('bet.races', compact('races'));
+        $challengeChoices = RaceUserAdjustment::query()
+            ->where('user_id', $userId)
+            ->whereIn('race_id', $races->pluck('id'))
+            ->pluck('challenge_choice', 'race_id');
+
+        return view('bet.races', compact('races', 'challengeChoices'));
+    }
+
+    public function selectChallenge(Race $race)
+    {
+        if ($response = $this->ensureRaceBettingOpen($race)) {
+            return $response;
+        }
+
+        $choice = $this->challengeChoiceForUserRace((int) auth()->id(), (int) $race->id);
+        if ($choice !== null) {
+            return redirect()->route('bet.types', $race);
+        }
+
+        return view('bet.challenge_select', [
+            'race' => $race,
+        ]);
+    }
+
+    public function storeChallengeChoice(Request $request, Race $race)
+    {
+        if ($response = $this->ensureRaceBettingOpen($race)) {
+            return $response;
+        }
+
+        $validated = $request->validate([
+            'challenge_choice' => ['required', 'in:' . self::CHALLENGE_NORMAL . ',' . self::CHALLENGE_RACE],
+        ], [
+            'challenge_choice.required' => '通常か勝負レースかを選択してください。',
+            'challenge_choice.in' => '選択内容が不正です。',
+        ]);
+
+        $userId = (int) auth()->id();
+        $choice = (string) $validated['challenge_choice'];
+
+        DB::transaction(function () use ($userId, $race, $choice) {
+            $adjustment = RaceUserAdjustment::query()
+                ->lockForUpdate()
+                ->firstOrNew([
+                    'user_id' => $userId,
+                    'race_id' => $race->id,
+                ]);
+
+            if ($adjustment->challenge_choice === null) {
+                $user = User::query()
+                    ->whereKey($userId)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+                $allowance = $choice === self::CHALLENGE_RACE
+                    ? self::CHALLENGE_ALLOWANCE
+                    : self::NORMAL_ALLOWANCE;
+
+                $adjustment->bonus_points = (int) ($adjustment->bonus_points ?? 0);
+                $adjustment->challenge_choice = $choice;
+                $adjustment->challenge_chosen_at = now();
+                $adjustment->save();
+
+                $user->current_balance = (int) ($user->current_balance ?? 0) + $allowance;
+                $user->save();
+            }
+        });
+
+        return redirect()->route('bet.types', $race);
     }
 
     public function cart(Race $race)
     {
         if ($response = $this->ensureRaceBettingOpen($race)) {
+            return $response;
+        }
+        if ($response = $this->ensureChallengeChoiceSelected($race)) {
             return $response;
         }
 
@@ -69,6 +168,9 @@ class BetFlowController extends Controller
     public function cartUpdate(Request $request, Race $race)
     {
         if ($response = $this->ensureRaceBettingOpen($race)) {
+            return $response;
+        }
+        if ($response = $this->ensureChallengeChoiceSelected($race)) {
             return $response;
         }
 
@@ -236,6 +338,9 @@ class BetFlowController extends Controller
         if ($response = $this->ensureRaceBettingOpen($race)) {
             return $response;
         }
+        if ($response = $this->ensureChallengeChoiceSelected($race)) {
+            return $response;
+        }
 
         $cartKey = $this->cartKey($race->id);
         $cart = session($cartKey);
@@ -289,12 +394,19 @@ class BetFlowController extends Controller
             }
         }
 
-        DB::transaction(function () use ($race, $cart) {
+        try {
+            DB::transaction(function () use ($race, $cart) {
             $stakeAmount = (int)collect($cart['items'])->sum(fn($i) => (int)$i['amount']);
+            $user = User::query()->whereKey((int) auth()->id())->lockForUpdate()->firstOrFail();
+            if ((int) ($user->current_balance ?? 0) < $stakeAmount) {
+                throw ValidationException::withMessages([
+                    'balance' => '現在残高を超えるため購入できません。',
+                ]);
+            }
             $buildSnapshot = $this->buildSnapshotFromCart($cart);
 
             $bet = Bet::create([
-                'user_id' => auth()->id(),
+                'user_id' => $user->id,
                 'race_id' => $race->id,
                 'stake_amount' => $stakeAmount,
                 'return_amount' => 0,
@@ -314,7 +426,15 @@ class BetFlowController extends Controller
             ])->all();
 
             BetItem::insert($rows);
-        });
+
+            $user->current_balance = (int) ($user->current_balance ?? 0) - $stakeAmount;
+            $user->save();
+            });
+        } catch (ValidationException $e) {
+            return redirect()->route('bet.cart', $race)
+                ->withErrors($e->errors())
+                ->withInput();
+        }
 
         // すでに払戻が登録済みのレースなら購入直後に結果反映
         $settlementService->recalculateForRace($race->id);
@@ -328,6 +448,9 @@ class BetFlowController extends Controller
     public function cartAdd(Request $request, Race $race, CartService $cartService, BuilderResolver $resolver)
     {
         if ($response = $this->ensureRaceBettingOpen($race)) {
+            return $response;
+        }
+        if ($response = $this->ensureChallengeChoiceSelected($race)) {
             return $response;
         }
 
@@ -348,18 +471,26 @@ class BetFlowController extends Controller
 
         // items生成もBuilder側
         $items = $builder->build($validated, $race);
+        $itemCount = count($items);
+        $pointCountMax = (int) config('domain.bet.point_count_max', 1_000);
         Log::info('bet.cart.add.build', [
             'user_id' => auth()->id(),
             'race_id' => $race->id,
             'bet_type' => $betType,
             'mode' => $mode,
             'session_id' => session()->getId(),
-            'built_items_count' => count($items),
+            'built_items_count' => $itemCount,
         ]);
 
         if (empty($items)) {
             return back()
                 ->withErrors(['cart_add' => '有効な買い目がありません。列の選択条件を確認してください。'])
+                ->withInput();
+        }
+
+        if ($itemCount > $pointCountMax) {
+            return back()
+                ->withErrors(['cart_add' => "まとめてカートに追加できる点数は{$pointCountMax}点までです（現在 {$itemCount}点）。"])
                 ->withInput();
         }
 
@@ -380,6 +511,9 @@ class BetFlowController extends Controller
     public function selectType(Race $race)
     {
         if ($response = $this->ensureRaceBettingOpen($race)) {
+            return $response;
+        }
+        if ($response = $this->ensureChallengeChoiceSelected($race)) {
             return $response;
         }
 
@@ -416,6 +550,9 @@ class BetFlowController extends Controller
         if ($response = $this->ensureRaceBettingOpen($race)) {
             return $response;
         }
+        if ($response = $this->ensureChallengeChoiceSelected($race)) {
+            return $response;
+        }
 
         session(['bet.current_race_id' => $race->id]);
 
@@ -435,6 +572,9 @@ class BetFlowController extends Controller
         if ($response = $this->ensureRaceBettingOpen($race)) {
             return $response;
         }
+        if ($response = $this->ensureChallengeChoiceSelected($race)) {
+            return $response;
+        }
 
         session(['bet.current_race_id' => $race->id]);
         // 互換：現状 mode が sanrentan_box のままでも動くようにする
@@ -451,12 +591,17 @@ class BetFlowController extends Controller
         $horseNos = collect(range(1, $count))
             ->map(fn($n) => (string)$n)
             ->values();
+        $horseNameByNo = $race->horses()
+            ->pluck('horse_name', 'horse_no')
+            ->mapWithKeys(fn ($name, $no) => [(string) $no => (string) $name])
+            ->all();
 
         return view($conf['view'], [
             'race' => $race,
             'betType' => $betType,
             'mode' => $mode,
             'horseNos' => $horseNos,
+            'horseNameByNo' => $horseNameByNo,
         ]);
     }
 

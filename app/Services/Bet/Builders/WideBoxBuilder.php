@@ -12,8 +12,8 @@ class WideBoxBuilder extends AbstractBetBuilder
 
         return array_merge(parent::rules($race), [
             // ワイドボックス：2頭以上
-            // 上限は一旦12（必要なら後で制限）
-            'horses' => ['required', 'array', 'min:2', 'max:12'],
+            // 頭数上限はレース頭数に合わせる
+            'horses' => ['required', 'array', 'min:2', "max:{$max}"],
             'horses.*' => ['required', 'integer', "between:1,{$max}", 'distinct'],
         ]);
     }

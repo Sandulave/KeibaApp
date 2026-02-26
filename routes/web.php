@@ -45,6 +45,8 @@ Route::middleware(['auth', 'role:group:stats_access'])->group(function () {
 
     // レース選択
     Route::get('/bet', [BetFlowController::class, 'selectRace'])->name('bet.races');
+    Route::get('/bet/{race}/challenge', [BetFlowController::class, 'selectChallenge'])->name('bet.challenge.select');
+    Route::post('/bet/{race}/challenge', [BetFlowController::class, 'storeChallengeChoice'])->name('bet.challenge.store');
 
     // 券種選択（追加）
     Route::get('/bet/{race}/types', [BetFlowController::class, 'selectType'])->name('bet.types');

@@ -96,7 +96,7 @@
                         <div class="flex items-end justify-between mb-2 gap-2">
                             <div>
                                 <div class="text-sm font-medium">選択</div>
-                                <div class="text-xs text-gray-500">2頭以上（上限はBuilder側で制限されます）</div>
+                                <div class="text-xs text-gray-500">2頭以上</div>
                             </div>
                             <div class="flex gap-2">
                                 <button type="button" id="all" class="px-3 py-2 rounded-lg bg-white border text-sm hover:bg-gray-100">全通り</button>
@@ -109,7 +109,8 @@
                                 <thead class="bg-gray-50">
                                     <tr>
                                         <th class="px-3 py-2 text-left font-medium text-gray-600 w-16">枠</th>
-                                        <th class="px-3 py-2 text-left font-medium text-gray-600 w-20">馬番</th>
+                                        <th class="px-3 py-2 text-left font-medium text-gray-600 w-14">馬番</th>
+                                        <th class="px-3 py-2 text-left font-medium text-gray-600 w-40">馬名</th>
                                         <th class="px-3 py-2 text-left font-medium text-gray-600 w-44">選択</th>
                                     </tr>
                                 </thead>
@@ -122,7 +123,12 @@
                                         @endphp
                                         <tr data-row="{{ $noStr }}" class="hover:bg-gray-50">
                                             <td class="px-3 py-2"><span class="inline-flex w-10 h-8 items-center justify-center rounded-md text-xs font-bold {{ $frameClass }}">{{ $frame }}</span></td>
-                                            <td class="px-3 py-2 font-semibold text-gray-900">{{ $noStr }}</td>
+                                            <td class="px-2 py-2 font-semibold text-gray-900">
+                                                {{ $noStr }}
+                                            </td>
+                                            <td class="px-3 py-2 !text-left text-base font-medium text-gray-800">
+                                                {{ $horseNameByNo[$noStr] ?? '-' }}
+                                            </td>
                                             <td class="px-3 py-2 cursor-pointer" data-col="horse" data-no="{{ $noStr }}">
                                                 <label class="inline-flex items-center gap-2 cursor-pointer select-none px-2 py-1 rounded hover:bg-gray-100 focus-within:ring-2 focus-within:ring-indigo-500">
                                                     <input type="checkbox" name="horses[]" value="{{ $noStr }}" class="h-4 w-4 rounded border-gray-300 text-indigo-600" aria-label="馬番{{ $noStr }}" @checked(in_array($noStr, $oldHorses, true))>

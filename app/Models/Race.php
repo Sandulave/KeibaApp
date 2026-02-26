@@ -40,4 +40,9 @@ class Race extends Model
     {
         return $this->hasMany(Bet::class);
     }
+
+    public function horses(): HasMany
+    {
+        return $this->hasMany(RaceHorse::class)->orderBy('horse_no');
+    }
 }

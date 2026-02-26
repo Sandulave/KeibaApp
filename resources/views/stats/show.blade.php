@@ -35,9 +35,9 @@
                     {{ $overallRoi !== null ? number_format($overallRoi, 2) . '%' : '-' }}</div>
             </div>
             <div class="rounded-lg bg-white p-4 ring-1 ring-gray-200">
-                <div class="text-xs text-gray-500">ボーナスPt / 繰越金 / 回収額</div>
+                <div class="text-xs text-gray-500">現在残高</div>
                 <div id="summaryCombined" class="mt-1 text-xl font-semibold">
-                    {{ number_format($bonusPoints + $carryOverAmount + $totalReturn) }}円
+                    {{ number_format((int) ($currentBalance ?? 0)) }}円
                 </div>
             </div>
         </div>
@@ -47,90 +47,122 @@
                 <h2 class="text-lg font-semibold">レース別成績</h2>
             </div>
             <div class="overflow-x-auto">
-                <table class="min-w-[1200px] w-full table-auto">
+                <table class="w-full table-fixed text-sm">
+                    <colgroup>
+                        <col class="w-[8%]">
+                        <col class="w-[11%]">
+                        <col class="w-[8%]">
+                        <col class="w-[7%]">
+                        <col class="w-[7%]">
+                        <col class="w-[7%]">
+                        <col class="w-[8%]">
+                        <col class="w-[9%]">
+                        <col class="w-[10%]">
+                        <col class="w-[7%]">
+                        <col class="w-[7%]">
+                        <col class="w-[9%]">
+                    </colgroup>
                     <thead>
                         <tr class="bg-gray-50 border-b border-gray-200">
                             <th
-                                class="px-3 py-3 align-middle text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                                class="px-2 py-3 align-middle text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
                                 開催日</th>
                             <th
-                                class="px-3 py-3 align-middle text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                                class="px-2 py-3 align-middle text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
                                 レース</th>
                             <th
-                                class="px-3 py-3 align-middle text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
+                                class="px-2 py-3 align-middle text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
+                                配布金額</th>
+                            <th
+                                class="px-2 py-3 align-middle text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
                                 投資額</th>
                             <th
-                                class="px-3 py-3 align-middle text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
+                                class="px-2 py-3 align-middle text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
                                 回収額</th>
                             <th
-                                class="px-3 py-3 align-middle text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
+                                class="px-2 py-3 align-middle text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
                                 回収率</th>
                             <th
-                                class="px-3 py-3 align-middle text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
-                                ボーナスPt</th>
-                            <th
-                                class="px-3 py-3 align-middle text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
-                                繰越金</th>
-                            <th
-                                class="px-3 py-3 align-middle text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
+                                class="px-2 py-3 align-middle text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
                                 合計</th>
                             <th
-                                class="px-3 py-3 align-middle text-right text-xs font-medium text-gray-600 uppercase tracking-wider whitespace-nowrap">
+                                class="px-2 py-3 align-middle text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
                                 ボーナスPt</th>
                             <th
-                                class="px-3 py-3 align-middle text-right text-xs font-medium text-gray-600 uppercase tracking-wider whitespace-nowrap">
-                                繰越金</th>
+                                class="px-2 py-3 align-middle text-center text-xs font-medium text-gray-600 uppercase tracking-wider">
+                                勝負レース</th>
                             <th
-                                class="px-3 py-3 align-middle text-center text-xs font-medium text-gray-600 uppercase tracking-wider whitespace-nowrap">
+                                class="px-2 py-3 align-middle text-center text-xs font-medium text-gray-600 uppercase tracking-wider">
                                 保存</th>
                             <th
-                                class="px-3 py-3 align-middle text-center text-xs font-medium text-gray-600 uppercase tracking-wider whitespace-nowrap">
+                                class="px-2 py-3 align-middle text-center text-xs font-medium text-gray-600 uppercase tracking-wider">
                                 削除</th>
                             <th
-                                class="px-3 py-3 align-middle text-center text-xs font-medium text-gray-600 uppercase tracking-wider whitespace-nowrap">
+                                class="px-2 py-3 align-middle text-center text-xs font-medium text-gray-600 uppercase tracking-wider">
                                 馬券詳細</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200">
                         @forelse($raceRows as $row)
                             <tr class="hover:bg-gray-50">
-                                <td class="px-3 py-4 align-middle whitespace-nowrap text-sm text-gray-700">
+                                <td class="px-2 py-4 align-middle text-gray-700 whitespace-nowrap">
                                     {{ $row->race_date }}</td>
-                                <td class="px-3 py-4 align-middle whitespace-nowrap text-sm text-gray-900">
+                                <td class="px-2 py-4 align-middle text-gray-900 truncate" title="{{ $row->race_name }}">
                                     {{ $row->race_name }}</td>
-                                <td class="px-3 py-4 align-middle whitespace-nowrap text-sm text-right text-gray-700">
+                                <td class="px-2 py-4 align-middle text-right text-gray-700">
+                                    @php
+                                        $allowanceAmount = match ($row->challenge_choice ?? null) {
+                                            'challenge' => 30000,
+                                            'normal' => 10000,
+                                            default => 0,
+                                        };
+                                    @endphp
+                                    <span data-display="allowance">{{ number_format($allowanceAmount) }}</span>円
+                                </td>
+                                <td class="px-2 py-4 align-middle text-right text-gray-700" data-display="stake">
                                     {{ number_format((int) $row->total_stake) }}円</td>
-                                <td class="px-3 py-4 align-middle whitespace-nowrap text-sm text-right text-gray-700">
+                                <td class="px-2 py-4 align-middle text-right text-gray-700" data-display="return">
                                     {{ number_format((int) $row->total_return) }}円</td>
-                                <td class="px-3 py-4 align-middle whitespace-nowrap text-sm text-right text-gray-700">
+                                <td class="px-2 py-4 align-middle text-right text-gray-700">
                                     {{ $row->roi_percent !== null ? number_format((float) $row->roi_percent, 2) . '%' : '-' }}
                                 </td>
-                                <td class="px-3 py-4 align-middle whitespace-nowrap text-sm text-right text-gray-700" data-display="bonus">
-                                    {{ number_format((int) $row->bonus_points) }}</td>
-                                <td class="px-3 py-4 align-middle whitespace-nowrap text-sm text-right text-gray-700" data-display="carry">
-                                    {{ number_format((int) $row->carry_over_amount) }}</td>
-                                <td class="px-3 py-4 align-middle whitespace-nowrap text-sm text-right text-gray-700" data-display="sum">
-                                    {{ number_format((int) $row->total_return + (int) $row->bonus_points + (int) $row->carry_over_amount) }}円
+                                <td class="px-2 py-4 align-middle text-right text-gray-700" data-display="sum">
+                                    {{ number_format($allowanceAmount - (int) $row->total_stake + (int) $row->total_return + (int) $row->bonus_points) }}円
                                 </td>
                                 @if ($canEditAdjustments)
-                                    @php($formId = 'adjustment-form-' . $row->race_id)
-                                    <td class="px-3 py-3 align-middle whitespace-nowrap text-sm text-right">
+                                    @php
+                                        $formId = 'adjustment-form-' . $row->race_id;
+                                    @endphp
+                                    <td class="px-2 py-3 align-middle text-right text-sm">
                                         <form id="{{ $formId }}" method="POST"
                                             action="{{ route('stats.users.adjustments.update', $user) }}" class="js-adjustment-form">
                                             @csrf
                                             <input type="hidden" name="race_id" value="{{ $row->race_id }}">
                                             <input type="number" name="bonus_points" min="{{ -1 * $adjustmentMax }}" max="{{ $adjustmentMax }}"
                                                 value="{{ old('race_id') == $row->race_id ? old('bonus_points') : (int) $row->bonus_points }}"
-                                                class="w-24 rounded border-gray-300 text-sm text-right" placeholder="ボーナス">
+                                                class="w-full max-w-[5rem] rounded border-gray-300 text-sm text-right" placeholder="ボーナス">
                                         </form>
                                     </td>
-                                    <td class="px-3 py-3 align-middle whitespace-nowrap text-sm text-right">
-                                        <input type="number" name="carry_over_amount" min="{{ -1 * $adjustmentMax }}" max="{{ $adjustmentMax }}" step="100"
+                                    <td class="px-2 py-3 align-middle text-center text-sm">
+                                        @php
+                                            $selectedChallengeChoice = old('race_id') == $row->race_id
+                                                ? old('challenge_choice')
+                                                : ($row->challenge_choice ?? null);
+                                            $isChallengeChoiceLocked = $selectedChallengeChoice === null;
+                                        @endphp
+                                        <select
+                                            name="challenge_choice"
                                             form="{{ $formId }}"
-                                            value="{{ old('race_id') == $row->race_id ? old('carry_over_amount') : (int) $row->carry_over_amount }}"
-                                            class="w-24 rounded border-gray-300 text-sm text-right" placeholder="繰越金">
+                                            @disabled($isChallengeChoiceLocked)
+                                            class="js-challenge-select w-full max-w-[6rem] rounded text-sm transition-colors {{ ($selectedChallengeChoice === 'challenge') ? 'border-red-300 bg-red-100 text-red-700' : 'border-gray-300 bg-white text-gray-900' }} {{ $isChallengeChoiceLocked ? 'cursor-not-allowed bg-gray-100 text-gray-400' : '' }}">
+                                            @if ($isChallengeChoiceLocked)
+                                                <option value="" selected>未選択</option>
+                                            @endif
+                                            <option value="normal" @selected($selectedChallengeChoice === 'normal')>通常</option>
+                                            <option value="challenge" @selected($selectedChallengeChoice === 'challenge')>勝負</option>
+                                        </select>
                                     </td>
-                                    <td class="px-3 py-3 align-middle whitespace-nowrap text-sm text-center">
+                                    <td class="px-2 py-3 align-middle text-center text-sm">
                                         <button type="submit" form="{{ $formId }}"
                                             class="js-adjustment-save rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
                                             >
@@ -138,11 +170,21 @@
                                         </button>
                                     </td>
                                 @else
-                                    <td class="px-3 py-3 align-middle whitespace-nowrap text-sm text-center text-gray-400">-</td>
-                                    <td class="px-3 py-3 align-middle whitespace-nowrap text-sm text-center text-gray-400">-</td>
-                                    <td class="px-3 py-3 align-middle whitespace-nowrap text-sm text-center text-gray-400">-</td>
+                                    <td class="px-2 py-3 align-middle text-right text-sm text-gray-700">
+                                        {{ number_format((int) $row->bonus_points) }}
+                                    </td>
+                                    <td class="px-2 py-3 align-middle text-center text-sm text-gray-700">
+                                        @if (($row->challenge_choice ?? null) === 'challenge')
+                                            <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">勝負</span>
+                                        @elseif (($row->challenge_choice ?? null) === 'normal')
+                                            <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700">通常</span>
+                                        @else
+                                            <span class="text-gray-400">未選択</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-2 py-3 align-middle text-center text-sm text-gray-400">-</td>
                                 @endif
-                                <td class="px-3 py-3 align-middle whitespace-nowrap text-sm text-center">
+                                <td class="px-2 py-3 align-middle text-center text-sm">
                                     @if ($canEditAdjustments)
                                         @if ((bool) $row->is_betting_closed)
                                             <button type="button"
@@ -153,7 +195,7 @@
                                             </button>
                                         @else
                                             <form method="POST" action="{{ route('stats.users.adjustments.destroy', $user) }}"
-                                                onsubmit="return confirm('このレースの馬券・ボーナスPT・繰越金を削除します。よろしいですか？');">
+                                                onsubmit="return confirm('このレースの馬券・ボーナスPTを削除します。よろしいですか？');">
                                                 @csrf
                                                 @method('DELETE')
                                                 <input type="hidden" name="race_id" value="{{ $row->race_id }}">
@@ -167,7 +209,7 @@
                                         <span class="text-gray-400">-</span>
                                     @endif
                                 </td>
-                                <td class="px-3 py-3 align-middle whitespace-nowrap text-sm text-center">
+                                <td class="px-2 py-3 align-middle text-center text-sm">
                                     <a href="{{ route('stats.users.race-bets', [$user, $row->race_id]) }}"
                                         class="rounded bg-gray-100 px-2 py-1 text-xs text-gray-800 hover:bg-gray-200">
                                         馬券詳細
@@ -176,7 +218,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="13" class="px-6 py-8 text-center text-sm text-gray-500">
+                                <td colspan="12" class="px-6 py-8 text-center text-sm text-gray-500">
                                     まだ購入データがありません。
                                 </td>
                             </tr>
@@ -199,6 +241,17 @@
                 const summaryCombinedEl = document.getElementById('summaryCombined');
                 const notice = document.getElementById('adjustmentNotice');
                 const initialSuccessMessage = @json(session('success'));
+                const currentBalanceEl = document.getElementById('js-current-balance-amount');
+                const applyChallengeSelectStyle = (el) => {
+                    if (!el) return;
+                    const isChallenge = el.value === 'challenge';
+                    el.classList.toggle('border-red-300', isChallenge);
+                    el.classList.toggle('bg-red-100', isChallenge);
+                    el.classList.toggle('text-red-700', isChallenge);
+                    el.classList.toggle('border-gray-300', !isChallenge);
+                    el.classList.toggle('bg-white', !isChallenge);
+                    el.classList.toggle('text-gray-900', !isChallenge);
+                };
 
                 const setNoticeVariant = (variant) => {
                     if (!notice) return;
@@ -218,15 +271,13 @@
                 };
 
                 const refreshSummary = () => {
-                    const returnTotal = Array.from(document.querySelectorAll('tbody tr td:nth-child(4)'))
+                    const returnTotal = Array.from(document.querySelectorAll('tbody tr td:nth-child(5)'))
                         .reduce((sum, el) => sum + toNumber(el.textContent), 0);
-                    const bonusTotal = Array.from(document.querySelectorAll('tbody tr [data-display="bonus"]'))
-                        .reduce((sum, el) => sum + toNumber(el.textContent), 0);
-                    const carryTotal = Array.from(document.querySelectorAll('tbody tr [data-display="carry"]'))
-                        .reduce((sum, el) => sum + toNumber(el.textContent), 0);
+                    const bonusTotal = Array.from(document.querySelectorAll('input[name="bonus_points"]'))
+                        .reduce((sum, el) => sum + toNumber(el.value), 0);
 
                     if (summaryReturnEl) summaryReturnEl.textContent = formatYen(returnTotal);
-                    if (summaryCombinedEl) summaryCombinedEl.textContent = formatYen(returnTotal + bonusTotal + carryTotal);
+                    if (summaryCombinedEl) summaryCombinedEl.textContent = formatYen(returnTotal + bonusTotal);
                 };
 
                 document.querySelectorAll('.js-adjustment-save').forEach((button) => {
@@ -237,18 +288,18 @@
                         const form = formId ? document.getElementById(formId) : null;
                         const row = button.closest('tr');
                         const bonusInput = form?.querySelector('input[name="bonus_points"]');
-                        const carryInput = row?.querySelector(`input[name="carry_over_amount"][form="${formId}"]`);
-                        const returnCell = row?.querySelector('td:nth-child(4)');
-                        const bonusCell = row?.querySelector('[data-display="bonus"]');
-                        const carryCell = row?.querySelector('[data-display="carry"]');
+                        const challengeSelect = row?.querySelector(`select[name="challenge_choice"][form="${formId}"]`);
+                        const returnCell = row?.querySelector('td:nth-child(5)');
                         const sumCell = row?.querySelector('[data-display="sum"]');
 
-                        if (!form || !row || !bonusInput || !carryInput || !returnCell || !bonusCell || !carryCell || !sumCell) {
+                        if (!form || !row || !bonusInput || !challengeSelect || !returnCell || !sumCell) {
                             return;
                         }
 
                         const formData = new FormData(form);
-                        formData.set('carry_over_amount', carryInput.value ?? '0');
+                        if (!challengeSelect.disabled) {
+                            formData.set('challenge_choice', challengeSelect.value ?? 'normal');
+                        }
                         button.disabled = true;
 
                         try {
@@ -265,14 +316,19 @@
                             if (!res.ok) {
                                 throw new Error('保存に失敗しました');
                             }
+                            const payload = await res.json();
 
                             const totalReturn = toNumber(returnCell.textContent);
+                            const stakeCell = row?.querySelector('[data-display="stake"]');
+                            const allowanceCell = row?.querySelector('[data-display="allowance"]');
                             const bonus = toNumber(bonusInput.value);
-                            const carry = toNumber(carryInput.value);
+                            const totalStake = toNumber(stakeCell?.textContent ?? '0');
+                            const allowanceAmount = toNumber(allowanceCell?.textContent ?? '0');
 
-                            bonusCell.textContent = formatNum(bonus);
-                            carryCell.textContent = formatNum(carry);
-                            sumCell.textContent = formatYen(totalReturn + bonus + carry);
+                            sumCell.textContent = formatYen(allowanceAmount - totalStake + totalReturn + bonus);
+                            if (currentBalanceEl && payload && typeof payload.current_balance === 'number') {
+                                currentBalanceEl.textContent = payload.current_balance.toLocaleString('ja-JP');
+                            }
                             refreshSummary();
                             showNotice('保存しました');
                         } catch (err) {
@@ -281,6 +337,11 @@
                             button.disabled = false;
                         }
                     });
+                });
+
+                document.querySelectorAll('.js-challenge-select').forEach((select) => {
+                    applyChallengeSelectStyle(select);
+                    select.addEventListener('change', () => applyChallengeSelectStyle(select));
                 });
 
                 if (initialSuccessMessage) {

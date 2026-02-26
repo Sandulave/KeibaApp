@@ -79,13 +79,37 @@
                     type="number"
                     id="horse_count"
                     name="horse_count"
-                    value="{{ old('horse_count', $race->horse_count ?? 18) }}"
-                    min="1"
+                    value="{{ old('horse_count', $race->horse_count ?? 0) }}"
+                    min="0"
                     max="18"
                     required
                     class="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500">
                 @error('horse_count')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <p class="text-sm font-medium text-gray-900">馬名（任意）</p>
+                <p class="mt-1 text-xs text-gray-500">先に頭数を入力してください。</p>
+                <div class="mt-3 grid grid-cols-1 gap-2">
+                    @for ($horseNo = 1; $horseNo <= 18; $horseNo++)
+                        <label class="flex items-center gap-2 text-sm" data-horse-name-row="{{ $horseNo }}">
+                            <span class="w-10 shrink-0 text-gray-600">{{ $horseNo }}番</span>
+                            <input
+                                type="text"
+                                name="horse_names[{{ $horseNo }}]"
+                                value="{{ old("horse_names.{$horseNo}", $horseNameByNo[$horseNo] ?? '') }}"
+                                class="w-full rounded border-gray-300 text-sm"
+                                placeholder="馬名">
+                        </label>
+                    @endfor
+                </div>
+                @error('horse_names')
+                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                @enderror
+                @error('horse_names.*')
+                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
                 @enderror
             </div>
 
@@ -151,4 +175,28 @@
             </div>
         </form>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const horseCountInput = document.getElementById('horse_count');
+            const horseNameRows = Array.from(document.querySelectorAll('[data-horse-name-row]'));
+
+            if (!horseCountInput || horseNameRows.length === 0) {
+                return;
+            }
+
+            const updateHorseNameRows = () => {
+                const rawCount = Number.parseInt(horseCountInput.value, 10);
+                const count = Number.isNaN(rawCount) ? 0 : Math.max(0, Math.min(18, rawCount));
+
+                horseNameRows.forEach((row) => {
+                    const rowNo = Number.parseInt(row.dataset.horseNameRow || '0', 10);
+                    row.classList.toggle('hidden', rowNo > count);
+                });
+            };
+
+            horseCountInput.addEventListener('input', updateHorseNameRows);
+            updateHorseNameRows();
+        });
+    </script>
 </x-app-layout>

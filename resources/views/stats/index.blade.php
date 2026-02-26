@@ -4,9 +4,9 @@
             <h1 class="text-3xl font-bold tracking-tight">成績ランキング</h1>
             <p class="mt-1 text-sm text-gray-500">
                 @if (($viewMode ?? 'user') === 'race')
-                    レース別のユーザーランキング（投資・回収・回収率・ボーナスPT・繰越金・合計）を表示しています。
+                    レース別のユーザーランキング（投資・回収・回収率・ボーナスPT・現在残高）を表示しています。
                 @else
-                    ユーザー別の投資・回収・回収率・ボーナスPT・繰越金・合計を表示しています。
+                    ユーザー別の投資・回収・回収率・ボーナスPT・現在残高を表示しています。
                 @endif
             </p>
         </div>
@@ -71,8 +71,7 @@
                 'total_return' => '回収額',
                 'roi_percent' => '回収率',
                 'bonus_points' => 'ボーナスPT',
-                'carry_over_amount' => '繰越金',
-                'total_amount' => '合計',
+                'total_amount' => '現在残高',
             ];
         @endphp
 
@@ -136,7 +135,6 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-700">{{ number_format((int)$row->bonus_points) }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-700">{{ number_format((int)$row->carry_over_amount) }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">{{ number_format((int)$row->total_amount) }}円</td>
                             <td class="px-1 py-4 whitespace-nowrap text-center">
                                 <a href="{{ ($viewMode ?? 'user') === 'race' && !empty($selectedRaceId) ? route('stats.users.race-bets', [$row->user_id, $selectedRaceId]) : route('stats.users.show', $row->user_id) }}"
@@ -148,7 +146,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="px-6 py-8 text-center text-sm text-gray-500">
+                            <td colspan="9" class="px-6 py-8 text-center text-sm text-gray-500">
                                 {{ ($viewMode ?? 'user') === 'race' ? 'このレースの購入データがありません。' : 'まだ購入データがありません。' }}
                             </td>
                         </tr>

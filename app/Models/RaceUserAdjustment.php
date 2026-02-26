@@ -11,8 +11,13 @@ class RaceUserAdjustment extends Model
         'user_id',
         'race_id',
         'bonus_points',
-        'carry_over_amount',
+        'challenge_choice',
+        'challenge_chosen_at',
         'note',
+    ];
+
+    protected $casts = [
+        'challenge_chosen_at' => 'datetime',
     ];
 
     public function user(): BelongsTo

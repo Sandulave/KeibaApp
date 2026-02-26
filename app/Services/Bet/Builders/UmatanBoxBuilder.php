@@ -12,8 +12,8 @@ class UmatanBoxBuilder extends AbstractBetBuilder
 
         return array_merge(parent::rules($race), [
             // 馬単ボックス：2頭以上
-            // 上限は一旦12（重くなるなら後で調整）
-            'horses' => ['required', 'array', 'min:2', 'max:12'],
+            // 頭数上限はレース頭数に合わせる
+            'horses' => ['required', 'array', 'min:2', "max:{$max}"],
             'horses.*' => ['required', 'integer', "between:1,{$max}", 'distinct'],
         ]);
     }

@@ -13,6 +13,7 @@
     $isPersonalStatsPage = request()->routeIs('stats.users.show') && $routeUserId === (int) auth()->id();
     $isRaceSelectPage = request()->routeIs('races.*')
         || request()->routeIs('bet.races')
+        || request()->routeIs('bet.challenge.select')
         || request()->routeIs('bet.types')
         || request()->routeIs('bet.modes')
         || request()->routeIs('bet.build.mode');
@@ -26,8 +27,16 @@
                 <img src="{{ asset('login_header.png') }}" alt="競馬アプリ ロゴ" class="h-20 sm:h-24 w-auto shrink-0" />
 
             @auth
-                <div class="text-xs sm:text-sm text-gray-600 break-all">
-                    ログイン中: {{ auth()->user()->display_name ?: auth()->user()->name }}
+                <div class="text-xs sm:text-sm text-gray-600 break-all leading-tight">
+                    ログイン中<br class="sm:hidden">
+                    <span class="font-medium">{{ auth()->user()->display_name ?: auth()->user()->name }}</span>
+                </div>
+                <div class="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 leading-tight whitespace-nowrap">
+                    <div class="text-[10px] sm:text-xs text-emerald-700">現在残高</div>
+                    <div class="text-sm sm:text-base font-bold text-emerald-900">
+                        <span id="js-current-balance-amount">{{ number_format((int) (auth()->user()->current_balance ?? 0)) }}</span>
+                        <span class="text-xs font-semibold">円</span>
+                    </div>
                 </div>
             @endauth
             </div>

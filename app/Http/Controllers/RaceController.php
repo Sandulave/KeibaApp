@@ -6,6 +6,7 @@ use App\Models\Race;
 use App\Models\Bet;
 use App\Enums\BetType;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class RaceController extends Controller
 {
@@ -24,7 +25,9 @@ class RaceController extends Controller
      */
     public function create()
     {
-        return view('races.create');
+        return view('races.create', [
+            'horseNameByNo' => [],
+        ]);
     }
 
     /**
@@ -39,6 +42,8 @@ class RaceController extends Controller
             'course' => ['required', 'string', 'max:255'],
             'result' => ['nullable', 'string', 'max:255'],
             'is_betting_closed' => ['nullable', 'boolean'],
+            'horse_names' => ['nullable', 'array'],
+            'horse_names.*' => ['nullable', 'string', 'max:255'],
         ], [
             'horse_count.required' => '頭数を入力してください。',
             'horse_count.integer' => '頭数は数値で入力してください。',
@@ -47,8 +52,13 @@ class RaceController extends Controller
         ]);
 
         $validated['is_betting_closed'] = $request->boolean('is_betting_closed');
+        $horseNames = (array) ($validated['horse_names'] ?? []);
+        unset($validated['horse_names']);
 
-        Race::create($validated);
+        DB::transaction(function () use ($validated, $horseNames) {
+            $race = Race::create($validated);
+            $this->syncRaceHorses($race, $horseNames);
+        });
 
         return redirect()->route('races.index')->with('success', '登録しました');
     }
@@ -97,7 +107,12 @@ class RaceController extends Controller
      */
     public function edit(Race $race)
     {
-        return view('races.edit', compact('race'));
+        $horseNameByNo = $race->horses()
+            ->pluck('horse_name', 'horse_no')
+            ->mapWithKeys(fn ($name, $no) => [(int) $no => (string) $name])
+            ->all();
+
+        return view('races.edit', compact('race', 'horseNameByNo'));
     }
 
     /**
@@ -112,6 +127,8 @@ class RaceController extends Controller
             'course' => ['required', 'string', 'max:255'],
             'result' => ['nullable', 'string', 'max:255'],
             'is_betting_closed' => ['nullable', 'boolean'],
+            'horse_names' => ['nullable', 'array'],
+            'horse_names.*' => ['nullable', 'string', 'max:255'],
         ], [
             'horse_count.required' => '頭数を入力してください。',
             'horse_count.integer' => '頭数は数値で入力してください。',
@@ -120,8 +137,13 @@ class RaceController extends Controller
         ]);
 
         $validated['is_betting_closed'] = $request->boolean('is_betting_closed');
+        $horseNames = (array) ($validated['horse_names'] ?? []);
+        unset($validated['horse_names']);
 
-        $race->update($validated);
+        DB::transaction(function () use ($race, $validated, $horseNames) {
+            $race->update($validated);
+            $this->syncRaceHorses($race, $horseNames);
+        });
 
         return redirect()->route('races.index')->with('success', '更新しました');
     }
@@ -135,5 +157,49 @@ class RaceController extends Controller
         $race->delete();
 
         return redirect()->route('races.index')->with('success', '削除しました');
+    }
+
+    private function syncRaceHorses(Race $race, array $horseNames): void
+    {
+        $horseCount = (int) ($race->horse_count ?? 0);
+        $rows = collect($horseNames)
+            ->mapWithKeys(function ($name, $no) {
+                $horseNo = (int) $no;
+                $horseName = trim((string) $name);
+
+                return [$horseNo => $horseName];
+            })
+            ->filter(fn (string $name, int $no) => $no >= 1 && $no <= 18 && $name !== '')
+            ->filter(fn (string $name, int $no) => $no <= $horseCount)
+            ->map(fn (string $name, int $no) => [
+                'race_id' => $race->id,
+                'horse_no' => $no,
+                'horse_name' => $name,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ])
+            ->values()
+            ->all();
+
+        if (empty($rows)) {
+            $race->horses()->delete();
+
+            return;
+        }
+
+        $targetNos = collect($rows)->pluck('horse_no')->all();
+
+        $race->horses()
+            ->where(function ($q) use ($horseCount, $targetNos) {
+                $q->where('horse_no', '>', $horseCount)
+                    ->orWhereNotIn('horse_no', $targetNos);
+            })
+            ->delete();
+
+        $race->horses()->upsert(
+            $rows,
+            ['race_id', 'horse_no'],
+            ['horse_name', 'updated_at']
+        );
     }
 }

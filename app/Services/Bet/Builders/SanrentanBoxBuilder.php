@@ -11,8 +11,8 @@ class SanrentanBoxBuilder extends AbstractBetBuilder
         $max = $this->maxHorse($race);
 
         return array_merge(parent::rules($race), [
-            // 3頭以上。上限は事故防止（UI目安と合わせるなら8）
-            'horses' => ['required', 'array', 'min:3', 'max:8'],
+            // 3頭以上。頭数上限はレース頭数に合わせる
+            'horses' => ['required', 'array', 'min:3', "max:{$max}"],
             'horses.*' => ['required', 'integer', "between:1,{$max}", 'distinct'],
         ]);
     }

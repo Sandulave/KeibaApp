@@ -163,7 +163,8 @@
                                 <thead class="bg-gray-50">
                                     <tr>
                                         <th class="px-3 py-2 text-left font-medium text-gray-600 w-16">枠</th>
-                                        <th class="px-3 py-2 text-left font-medium text-gray-600 w-20">馬番</th>
+                                        <th class="px-3 py-2 text-left font-medium text-gray-600 w-14">馬番</th>
+                                        <th class="px-3 py-2 text-left font-medium text-gray-600 w-40">馬名</th>
                                         <th class="px-3 py-2 text-center font-medium text-gray-600 w-28">1列目</th>
                                         <th class="px-3 py-2 text-center font-medium text-gray-600 w-28">2列目</th>
                                     </tr>
@@ -187,8 +188,11 @@
                                                 </span>
                                             </td>
 
-                                            <td class="px-3 py-2 font-semibold text-gray-900">
+                                            <td class="px-2 py-2 font-semibold text-gray-900">
                                                 {{ $noStr }}
+                                            </td>
+                                            <td class="px-3 py-2 !text-left text-base font-medium text-gray-800">
+                                                {{ $horseNameByNo[$noStr] ?? '-' }}
                                             </td>
 
                                             {{-- 1列目 --}}
