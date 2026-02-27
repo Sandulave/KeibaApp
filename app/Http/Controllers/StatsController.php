@@ -132,7 +132,7 @@ class StatsController extends Controller
                             : null;
                         $row->display_name = $row->user_display_name ?: $row->user_name;
                         $row->audience_role_label = $this->audienceRoleLabel($row->user_audience_role, $row->user_role);
-                        $row->profit_amount = $allowanceAmount + $return - $stake + $bonusPoints;
+                        $row->profit_amount = $return - $stake + $bonusPoints;
                         $row->bonus_points = $bonusPoints;
                         $row->allowance_amount = $allowanceAmount;
                         $row->total_amount = $row->profit_amount;
