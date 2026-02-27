@@ -4,7 +4,7 @@
             <h1 class="text-3xl font-bold tracking-tight">成績ランキング</h1>
             <p class="mt-1 text-sm text-gray-500">
                 @if (($viewMode ?? 'user') === 'race')
-                    レース別のユーザーランキング（投資・回収・回収率・ボーナスPT・現在残高）を表示しています。
+                    レース別のユーザーランキング（配布金額・投資・回収・回収率・ボーナスPT・収支）を表示しています。
                 @else
                     ユーザー別の投資・回収・回収率・ボーナスPT・現在残高を表示しています。
                 @endif
@@ -65,14 +65,25 @@
         </div>
 
         @php
-            $sortableHeaders = [
-                'display_name' => 'ユーザー',
-                'total_stake' => '投資額',
-                'total_return' => '回収額',
-                'roi_percent' => '回収率',
-                'bonus_points' => 'ボーナスPT',
-                'total_amount' => '現在残高',
-            ];
+            $isRaceMode = ($viewMode ?? 'user') === 'race';
+            $sortableHeaders = $isRaceMode
+                ? [
+                    'display_name' => 'ユーザー',
+                    'allowance_amount' => '配布金額',
+                    'total_stake' => '投資額',
+                    'total_return' => '回収額',
+                    'roi_percent' => '回収率',
+                    'bonus_points' => 'ボーナスPT',
+                    'total_amount' => '収支',
+                ]
+                : [
+                    'display_name' => 'ユーザー',
+                    'total_stake' => '投資額',
+                    'total_return' => '回収額',
+                    'roi_percent' => '回収率',
+                    'bonus_points' => 'ボーナスPT',
+                    'total_amount' => '現在残高',
+                ];
         @endphp
 
         <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 overflow-hidden">
@@ -123,6 +134,9 @@
                                     ({{ $row->audience_role_label }})
                                 </span>
                             </td>
+                            @if ($isRaceMode)
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-700">{{ number_format((int) ($row->allowance_amount ?? 0)) }}円</td>
+                            @endif
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-right">{{ number_format((int)$row->total_stake) }}円</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-700">{{ number_format((int)$row->total_return) }}円</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
@@ -146,7 +160,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="px-6 py-8 text-center text-sm text-gray-500">
+                            <td colspan="{{ $isRaceMode ? 9 : 8 }}" class="px-6 py-8 text-center text-sm text-gray-500">
                                 {{ ($viewMode ?? 'user') === 'race' ? 'このレースの購入データがありません。' : 'まだ購入データがありません。' }}
                             </td>
                         </tr>

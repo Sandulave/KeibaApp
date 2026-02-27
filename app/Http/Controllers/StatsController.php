@@ -35,6 +35,7 @@ class StatsController extends Controller
             'roi_percent',
             'bonus_points',
             'display_name',
+            'allowance_amount',
         ];
         if (!in_array($sortKey, $allowedSortKeys, true)) {
             $sortKey = 'total_amount';
@@ -77,6 +78,7 @@ class StatsController extends Controller
                         DB::raw('COALESCE(SUM(bets.return_amount), 0) as total_return'),
                         DB::raw('COALESCE(SUM(bets.hit_count), 0) as total_hits'),
                         DB::raw('COALESCE(MAX(rua.bonus_points), 0) as bonus_points'),
+                        DB::raw('MAX(rua.challenge_choice) as challenge_choice'),
                     ])
                     ->join('users', 'users.id', '=', 'bets.user_id')
                     ->leftJoin('race_user_adjustments as rua', function ($join) use ($selectedRaceId) {
@@ -116,7 +118,11 @@ class StatsController extends Controller
                         $betCount = (int)$row->bet_count;
                         $hitCount = (int)$row->total_hits;
                         $bonusPoints = (int)($row->bonus_points ?? 0);
-                        $totalAdjustment = $bonusPoints;
+                        $allowanceAmount = match ($row->challenge_choice ?? null) {
+                            'challenge' => 30000,
+                            'normal' => 10000,
+                            default => 0,
+                        };
 
                         $row->roi_percent = $stake > 0
                             ? round(($return / $stake) * 100, 2)
@@ -126,9 +132,10 @@ class StatsController extends Controller
                             : null;
                         $row->display_name = $row->user_display_name ?: $row->user_name;
                         $row->audience_role_label = $this->audienceRoleLabel($row->user_audience_role, $row->user_role);
-                        $row->profit_amount = $return - $stake;
+                        $row->profit_amount = $allowanceAmount + $return - $stake + $bonusPoints;
                         $row->bonus_points = $bonusPoints;
-                        $row->total_amount = (int) ($row->current_balance ?? 0);
+                        $row->allowance_amount = $allowanceAmount;
+                        $row->total_amount = $row->profit_amount;
                         $row->total_score = $stake > 0
                             ? round(($row->total_amount / $stake) * 100, 2)
                             : null;
