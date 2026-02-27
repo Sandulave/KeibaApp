@@ -138,23 +138,13 @@
                                         </form>
                                     </td>
                                     <td class="px-2 py-3 align-middle text-center text-sm">
-                                        @php
-                                            $selectedChallengeChoice = old('race_id') == $row->race_id
-                                                ? old('challenge_choice')
-                                                : ($row->challenge_choice ?? null);
-                                            $isChallengeChoiceLocked = $selectedChallengeChoice === null;
-                                        @endphp
-                                        <select
-                                            name="challenge_choice"
-                                            form="{{ $formId }}"
-                                            @disabled($isChallengeChoiceLocked)
-                                            class="js-challenge-select w-full max-w-[6rem] rounded text-sm transition-colors {{ ($selectedChallengeChoice === 'challenge') ? 'border-red-300 bg-red-100 text-red-700' : 'border-gray-300 bg-white text-gray-900' }} {{ $isChallengeChoiceLocked ? 'cursor-not-allowed bg-gray-100 text-gray-400' : '' }}">
-                                            @if ($isChallengeChoiceLocked)
-                                                <option value="" selected>未選択</option>
-                                            @endif
-                                            <option value="normal" @selected($selectedChallengeChoice === 'normal')>通常</option>
-                                            <option value="challenge" @selected($selectedChallengeChoice === 'challenge')>勝負</option>
-                                        </select>
+                                        @if (($row->challenge_choice ?? null) === 'challenge')
+                                            <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">勝負</span>
+                                        @elseif (($row->challenge_choice ?? null) === 'normal')
+                                            <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700">通常</span>
+                                        @else
+                                            <span class="text-gray-400">未選択</span>
+                                        @endif
                                     </td>
                                     <td class="px-2 py-3 align-middle text-center text-sm">
                                         <button type="submit" form="{{ $formId }}"
@@ -235,17 +225,6 @@
                 const notice = document.getElementById('adjustmentNotice');
                 const initialSuccessMessage = @json(session('success'));
                 const currentBalanceEl = document.getElementById('js-current-balance-amount');
-                const applyChallengeSelectStyle = (el) => {
-                    if (!el) return;
-                    const isChallenge = el.value === 'challenge';
-                    el.classList.toggle('border-red-300', isChallenge);
-                    el.classList.toggle('bg-red-100', isChallenge);
-                    el.classList.toggle('text-red-700', isChallenge);
-                    el.classList.toggle('border-gray-300', !isChallenge);
-                    el.classList.toggle('bg-white', !isChallenge);
-                    el.classList.toggle('text-gray-900', !isChallenge);
-                };
-
                 const setNoticeVariant = (variant) => {
                     if (!notice) return;
                     notice.classList.remove('bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800');
@@ -278,18 +257,14 @@
                         const form = formId ? document.getElementById(formId) : null;
                         const row = button.closest('tr');
                         const bonusInput = form?.querySelector('input[name="bonus_points"]');
-                        const challengeSelect = row?.querySelector(`select[name="challenge_choice"][form="${formId}"]`);
                         const returnCell = row?.querySelector('td:nth-child(5)');
                         const sumCell = row?.querySelector('[data-display="sum"]');
 
-                        if (!form || !row || !bonusInput || !challengeSelect || !returnCell || !sumCell) {
+                        if (!form || !row || !bonusInput || !returnCell || !sumCell) {
                             return;
                         }
 
                         const formData = new FormData(form);
-                        if (!challengeSelect.disabled) {
-                            formData.set('challenge_choice', challengeSelect.value ?? 'normal');
-                        }
                         button.disabled = true;
 
                         try {
@@ -327,11 +302,6 @@
                             button.disabled = false;
                         }
                     });
-                });
-
-                document.querySelectorAll('.js-challenge-select').forEach((select) => {
-                    applyChallengeSelectStyle(select);
-                    select.addEventListener('change', () => applyChallengeSelectStyle(select));
                 });
 
                 if (initialSuccessMessage) {
