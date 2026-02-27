@@ -333,4 +333,48 @@ class StatsFeatureTest extends TestCase
                 && ($rankByUserId[$userC->id] ?? null) === 3;
         });
     }
+
+    public function test_destroy_adjustment_subtracts_saved_bonus_points_from_current_balance(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'user',
+            'audience_role' => 'viewer',
+            'current_balance' => 100000,
+        ]);
+        $race = $this->createRace();
+
+        Bet::create([
+            'user_id' => $user->id,
+            'race_id' => $race->id,
+            'stake_amount' => 1000,
+            'return_amount' => 0,
+            'hit_count' => 0,
+            'roi_percent' => 0,
+        ]);
+        Bet::create([
+            'user_id' => $user->id,
+            'race_id' => $race->id,
+            'stake_amount' => 2000,
+            'return_amount' => 0,
+            'hit_count' => 0,
+            'roi_percent' => 0,
+        ]);
+
+        RaceUserAdjustment::create([
+            'user_id' => $user->id,
+            'race_id' => $race->id,
+            'bonus_points' => 1200,
+            'challenge_choice' => 'normal',
+            'challenge_chosen_at' => now(),
+        ]);
+
+        $this->actingAs($user)->delete(route('stats.users.adjustments.destroy', $user), [
+            'race_id' => $race->id,
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'current_balance' => 91800,
+        ]);
+    }
 }

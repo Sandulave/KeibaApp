@@ -665,6 +665,7 @@ class StatsController extends Controller
                 ->where('race_id', $raceId)
                 ->lockForUpdate()
                 ->first();
+            $bonusPointsDelta = (int) ($adjustment?->bonus_points ?? 0);
             $challengeChoice = $adjustment?->challenge_choice;
             $allowanceDelta = match ($challengeChoice) {
                 'challenge' => -30_000,
@@ -686,7 +687,10 @@ class StatsController extends Controller
             }
 
             if ($targetUser !== null) {
-                $targetUser->current_balance = (int) ($targetUser->current_balance ?? 0) + $stakeTotal + $allowanceDelta;
+                $targetUser->current_balance = (int) ($targetUser->current_balance ?? 0)
+                    + $stakeTotal
+                    + $allowanceDelta
+                    - $bonusPointsDelta;
                 $targetUser->save();
             }
         });
