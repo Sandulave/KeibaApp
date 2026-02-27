@@ -22,6 +22,7 @@ class User extends Authenticatable
         'name',
         'display_name',
         'password',
+        'discord_id',
         'role',
         'audience_role',
         'current_balance',

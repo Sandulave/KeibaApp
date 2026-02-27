@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\MaintenanceController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RaceController;
 use App\Http\Controllers\RacePayoutController;
@@ -22,6 +23,8 @@ Route::get('/dashboard', function () {
 // 管理者だけ：レース管理
 Route::middleware(['auth', 'role:group:admin'])->group(function () {
     Route::resource('races', RaceController::class);
+    Route::get('/admin/maintenance', [MaintenanceController::class, 'edit'])->name('admin.maintenance.edit');
+    Route::put('/admin/maintenance', [MaintenanceController::class, 'update'])->name('admin.maintenance.update');
 
     Route::prefix('races/{race}')
         ->name('races.')

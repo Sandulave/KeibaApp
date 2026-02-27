@@ -61,3 +61,21 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## DBメンテナンスモード運用
+
+`app_settings` テーブルの値でメンテナンス画面（503）を切り替えられます。
+
+- ON: `maintenance_enabled = 1`
+- OFF: `maintenance_enabled = 0`
+- 任意メッセージ: `maintenance_message`
+
+例（MySQL）:
+
+```sql
+UPDATE app_settings SET value = '1' WHERE `key` = 'maintenance_enabled';
+UPDATE app_settings SET value = '本日 22:00 までメンテナンス予定です' WHERE `key` = 'maintenance_message';
+
+UPDATE app_settings SET value = '0' WHERE `key` = 'maintenance_enabled';
+UPDATE app_settings SET value = NULL WHERE `key` = 'maintenance_message';
+```

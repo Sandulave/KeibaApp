@@ -18,6 +18,7 @@
         || request()->routeIs('bet.modes')
         || request()->routeIs('bet.build.mode');
     $isCartPage = request()->routeIs('bet.cart');
+    $isMaintenancePage = request()->routeIs('admin.maintenance.*');
 @endphp
 
 <nav class="bg-gray-100">
@@ -56,6 +57,13 @@
                     class="text-xs sm:text-sm font-medium text-gray-700 hover:text-gray-900 transition {{ $isRaceSelectPage ? 'underline underline-offset-4' : '' }}">
                     馬券購入
                 </a>
+
+                @if ($isAdmin)
+                    <a href="{{ route('admin.maintenance.edit') }}"
+                        class="text-xs sm:text-sm font-medium text-gray-700 hover:text-gray-900 transition {{ $isMaintenancePage ? 'underline underline-offset-4' : '' }}">
+                        メンテ設定
+                    </a>
+                @endif
 
                 @if ($currentRaceId)
                     <a href="{{ route('bet.cart', $currentRaceId) }}"
