@@ -1,8 +1,8 @@
 <x-app-layout :title="$displayName . ' の成績'">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div class="mb-8">
             <a href="{{ route('stats.index') }}" class="text-sm text-blue-600 hover:underline">← 成績ランキングに戻る</a>
-            <h1 class="mt-2 text-3xl font-bold tracking-tight">{{ $displayName }} の成績</h1>
+            <h1 class="mt-2 text-2xl sm:text-3xl font-bold tracking-tight">{{ $displayName }} の成績</h1>
             <p class="mt-1 text-sm text-gray-500">{{ $audienceRoleLabel }}</p>
         </div>
 
@@ -41,7 +41,7 @@
                 <h2 class="text-lg font-semibold">レース別成績</h2>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full table-fixed text-sm">
+                <table class="min-w-[1080px] w-full table-fixed text-sm">
                     <colgroup>
                         <col class="w-[8%]">
                         <col class="w-[11%]">

@@ -1,7 +1,7 @@
 <x-app-layout title="成績">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div class="mb-8">
-            <h1 class="text-3xl font-bold tracking-tight">成績ランキング</h1>
+            <h1 class="text-2xl sm:text-3xl font-bold tracking-tight">成績ランキング</h1>
             <p class="mt-1 text-sm text-gray-500">
                 @if (($viewMode ?? 'user') === 'race')
                     レース別のユーザーランキング（配布金額・投資・回収・回収率・ボーナスPT・収支）を表示しています。
@@ -13,12 +13,12 @@
 
         <div class="mb-6 flex flex-wrap gap-2">
             <a href="{{ route('stats.index', ['view' => 'user', 'role' => $roleFilter]) }}"
-                class="rounded-full px-4 py-2 text-sm font-medium transition
+                class="rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition
                 {{ ($viewMode ?? 'user') === 'user' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 ring-1 ring-gray-300 hover:bg-gray-50' }}">
                 ユーザー別
             </a>
             <a href="{{ route('stats.index', ['view' => 'race', 'role' => $roleFilter, 'race_id' => $selectedRaceId ?: null]) }}"
-                class="rounded-full px-4 py-2 text-sm font-medium transition
+                class="rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition
                 {{ ($viewMode ?? 'user') === 'race' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 ring-1 ring-gray-300 hover:bg-gray-50' }}">
                 レース別
             </a>
@@ -48,17 +48,17 @@
 
         <div class="mb-6 flex flex-wrap gap-2">
             <a href="{{ route('stats.index', ['view' => $viewMode ?? 'user', 'role' => 'all', 'race_id' => ($viewMode ?? 'user') === 'race' ? $selectedRaceId : null]) }}"
-                class="rounded-full px-4 py-2 text-sm font-medium transition
+                class="rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition
                 {{ $roleFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 ring-1 ring-gray-300 hover:bg-gray-50' }}">
                 全体
             </a>
             <a href="{{ route('stats.index', ['view' => $viewMode ?? 'user', 'role' => 'streamer', 'race_id' => ($viewMode ?? 'user') === 'race' ? $selectedRaceId : null]) }}"
-                class="rounded-full px-4 py-2 text-sm font-medium transition
+                class="rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition
                 {{ $roleFilter === 'streamer' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 ring-1 ring-gray-300 hover:bg-gray-50' }}">
                 配信者
             </a>
             <a href="{{ route('stats.index', ['view' => $viewMode ?? 'user', 'role' => 'viewer', 'race_id' => ($viewMode ?? 'user') === 'race' ? $selectedRaceId : null]) }}"
-                class="rounded-full px-4 py-2 text-sm font-medium transition
+                class="rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition
                 {{ $roleFilter === 'viewer' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 ring-1 ring-gray-300 hover:bg-gray-50' }}">
                 視聴者
             </a>
@@ -88,10 +88,10 @@
 
         <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 overflow-hidden">
             <div class="overflow-x-auto">
-            <table class="min-w-[980px] w-full">
+            <table class="min-w-[900px] sm:min-w-[980px] w-full">
                 <thead>
                     <tr class="bg-gray-50 border-b border-gray-200">
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">順位</th>
+                        <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">順位</th>
                         @foreach($sortableHeaders as $key => $label)
                             @php
                                 $isActive = ($sortKey ?? 'total_amount') === $key;
@@ -100,7 +100,7 @@
                                 $nextDir = $isActive ? ($currentDir === 'desc' ? 'asc' : 'desc') : $defaultDir;
                                 $arrow = $isActive ? ($currentDir === 'desc' ? '▼' : '▲') : '';
                             @endphp
-                            <th class="px-6 py-3 {{ $key === 'display_name' ? 'text-left' : 'text-right' }} text-xs font-medium uppercase tracking-wider">
+                            <th class="px-3 sm:px-6 py-3 {{ $key === 'display_name' ? 'text-left' : 'text-right' }} text-xs font-medium uppercase tracking-wider">
                                 <a href="{{ route('stats.index', ['view' => $viewMode ?? 'user', 'role' => $roleFilter, 'race_id' => ($viewMode ?? 'user') === 'race' ? $selectedRaceId : null, 'sort' => $key, 'dir' => $nextDir]) }}"
                                    class="inline-flex items-center gap-1 transition {{ $isActive ? 'text-blue-700 font-semibold' : 'text-gray-600 hover:text-gray-900' }}">
                                     <span>{{ $label }}</span>
@@ -127,19 +127,19 @@
                         @endphp
                         <tr class="cursor-pointer transition-colors duration-150 {{ $roleRowClass }}"
                             onclick="window.location='{{ ($viewMode ?? 'user') === 'race' && !empty($selectedRaceId) ? route('stats.users.race-bets', [$row->user_id, $selectedRaceId]) : route('stats.users.show', $row->user_id) }}'">
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">{{ $rankByUserId[(int)$row->user_id] ?? '-' }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm font-semibold text-gray-900">{{ $rankByUserId[(int)$row->user_id] ?? '-' }}</td>
+                            <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900">
                                 {{ $row->display_name }}
                                 <span class="ml-2 text-xs text-gray-500">
                                     ({{ $row->audience_role_label }})
                                 </span>
                             </td>
                             @if ($isRaceMode)
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-700">{{ number_format((int) ($row->allowance_amount ?? 0)) }}円</td>
+                                <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-right text-gray-700">{{ number_format((int) ($row->allowance_amount ?? 0)) }}円</td>
                             @endif
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-right">{{ number_format((int)$row->total_stake) }}円</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-700">{{ number_format((int)$row->total_return) }}円</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
+                            <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-700 text-right">{{ number_format((int)$row->total_stake) }}円</td>
+                            <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-right text-gray-700">{{ number_format((int)$row->total_return) }}円</td>
+                            <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-right">
                                 @if($row->roi_percent !== null)
                                     <span class="{{ $row->roi_percent >= 100 ? 'text-green-700 font-semibold' : 'text-gray-700' }}">
                                         {{ number_format((float)$row->roi_percent, 2) }}%
@@ -148,9 +148,9 @@
                                     <span class="text-gray-400">-</span>
                                 @endif
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-700">{{ number_format((int)$row->bonus_points) }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">{{ number_format((int)$row->total_amount) }}円</td>
-                            <td class="px-1 py-4 whitespace-nowrap text-center">
+                            <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-right text-gray-700">{{ number_format((int)$row->bonus_points) }}</td>
+                            <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">{{ number_format((int)$row->total_amount) }}円</td>
+                            <td class="px-1 py-3 sm:py-4 whitespace-nowrap text-center">
                                 <a href="{{ ($viewMode ?? 'user') === 'race' && !empty($selectedRaceId) ? route('stats.users.race-bets', [$row->user_id, $selectedRaceId]) : route('stats.users.show', $row->user_id) }}"
                                    class="inline-flex items-center rounded bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-blue-700"
                                    onclick="event.stopPropagation();">

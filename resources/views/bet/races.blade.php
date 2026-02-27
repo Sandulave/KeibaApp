@@ -1,7 +1,7 @@
 <x-app-layout title="レース選択">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div class="mb-8">
-            <h1 class="text-3xl font-bold tracking-tight">レース選択</h1>
+            <h1 class="text-2xl sm:text-3xl font-bold tracking-tight">レース選択</h1>
             <p class="mt-1 text-sm text-gray-500">
                 購入対象レース：{{ count($races) }}件
             </p>
@@ -24,11 +24,11 @@
             <table class="w-full table-auto">
                 <thead>
                     <tr class="bg-gray-50 border-b border-gray-200">
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">名前</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">開催日</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">コース</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">結果・配当</th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">購入・詳細</th>
+                        <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">名前</th>
+                        <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">開催日</th>
+                        <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">コース</th>
+                        <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">結果・配当</th>
+                        <th class="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">購入・詳細</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200">
@@ -39,10 +39,10 @@
                             $isDetailDisabled = $isHorseCountInvalid;
                         @endphp
                         <tr class="transition-colors duration-150 {{ $isHorseCountInvalid ? 'bg-gray-50' : 'hover:bg-gray-50' }}">
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium {{ $isHorseCountInvalid ? 'text-gray-500' : 'text-gray-900' }}">{{ $race->name }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm {{ $isHorseCountInvalid ? 'text-gray-500' : 'text-gray-600' }}">{{ $race->race_date }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm {{ $isHorseCountInvalid ? 'text-gray-500' : 'text-gray-600' }}">{{ $race->course }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm {{ $isHorseCountInvalid ? 'text-gray-500' : 'text-gray-600' }}">
+                            <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm font-medium {{ $isHorseCountInvalid ? 'text-gray-500' : 'text-gray-900' }}">{{ $race->name }}</td>
+                            <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm {{ $isHorseCountInvalid ? 'text-gray-500' : 'text-gray-600' }}">{{ $race->race_date }}</td>
+                            <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm {{ $isHorseCountInvalid ? 'text-gray-500' : 'text-gray-600' }}">{{ $race->course }}</td>
+                            <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm {{ $isHorseCountInvalid ? 'text-gray-500' : 'text-gray-600' }}">
                                 @if (($race->payouts_count ?? 0) > 0)
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                         登録済み
@@ -61,7 +61,7 @@
                                     </span>
                                 @endif
                             </td>
-                            <td class="px-4 py-4 text-sm {{ $isHorseCountInvalid ? 'text-gray-500' : 'text-gray-600' }}">
+                            <td class="px-3 sm:px-4 py-3 sm:py-4 text-sm {{ $isHorseCountInvalid ? 'text-gray-500' : 'text-gray-600' }}">
                                 <div class="flex flex-wrap items-center gap-2">
                                     @if ($isPurchaseDisabled)
                                         <span
