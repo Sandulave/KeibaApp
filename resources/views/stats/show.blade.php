@@ -20,7 +20,7 @@
             </div>
         @endif
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
             <div class="rounded-lg bg-white p-4 ring-1 ring-gray-200">
                 <div class="text-xs text-gray-500">総投資額</div>
                 <div class="mt-1 text-xl font-semibold">{{ number_format($totalStake) }}円</div>
@@ -33,6 +33,18 @@
                 <div class="text-xs text-gray-500">回収率</div>
                 <div class="mt-1 text-xl font-semibold">
                     {{ $overallRoi !== null ? number_format($overallRoi, 2) . '%' : '-' }}</div>
+            </div>
+            <div class="rounded-lg bg-white p-4 ring-1 ring-gray-200">
+                <div class="text-xs text-gray-500">総配布金額</div>
+                <div class="mt-1 text-xl font-semibold">{{ number_format((int) ($totalAllowance ?? 0)) }}円</div>
+            </div>
+            <div class="rounded-lg bg-white p-4 ring-1 ring-gray-200">
+                <div class="text-xs text-gray-500">総ボーナスPt</div>
+                <div class="mt-1 text-xl font-semibold">{{ number_format((int) ($bonusPoints ?? 0)) }}</div>
+            </div>
+            <div class="rounded-lg bg-white p-4 ring-1 ring-gray-200">
+                <div class="text-xs text-gray-500">現在残高</div>
+                <div class="mt-1 text-xl font-semibold">{{ number_format((int) ($currentBalance ?? 0)) }}円</div>
             </div>
         </div>
 
