@@ -83,6 +83,7 @@
         {{-- 金額更新（0円にした行は削除される仕様） --}}
         <form id="cart-update-form" method="POST" action="{{ route('bet.cart.update', $race) }}" class="space-y-3">
             @csrf
+            <input type="hidden" name="idempotency_key" value="{{ $commitToken ?? '' }}">
 
             <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 p-4 space-y-2">
                 <div class="hidden md:grid grid-cols-12 gap-2 text-xs text-gray-500">

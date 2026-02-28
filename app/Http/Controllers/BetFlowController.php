@@ -4,24 +4,23 @@ namespace App\Http\Controllers;
 
 use App\Enums\BetType;
 use App\Models\Race;
-use App\Models\Bet;
-use App\Models\BetItem;
 use App\Models\RaceUserAdjustment;
 use App\Models\User;
 use Illuminate\Http\Request;
 use App\Services\Bet\CartService;
 use App\Services\Bet\BuilderResolver;
+use App\Services\Bet\BetPurchaseService;
+use App\Services\Finance\BetMoneyService;
 use App\Services\BetSettlementService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class BetFlowController extends Controller
 {
     private const CHALLENGE_NORMAL = 'normal';
     private const CHALLENGE_RACE = 'challenge';
-    private const NORMAL_ALLOWANCE = 10_000;
-    private const CHALLENGE_ALLOWANCE = 30_000;
 
     private function ensureRaceBettingOpen(Race $race)
     {
@@ -39,6 +38,24 @@ class BetFlowController extends Controller
         // レースごとにカートを分ける（他レースを誤爆しない）
         // NOTE: ドット区切りは既存セッション構造と衝突する場合があるため、フラットキーで保持する
         return "bet_cart_{$raceId}";
+    }
+
+    private function commitTokenKey(int $raceId): string
+    {
+        return "bet_commit_token_{$raceId}";
+    }
+
+    private function ensureCommitToken(int $raceId): string
+    {
+        $key = $this->commitTokenKey($raceId);
+        $token = session($key);
+
+        if (!is_string($token) || $token === '') {
+            $token = (string) Str::uuid();
+            session([$key => $token]);
+        }
+
+        return $token;
     }
 
     private function challengeChoiceForUserRace(int $userId, int $raceId): ?string
@@ -94,7 +111,7 @@ class BetFlowController extends Controller
         ]);
     }
 
-    public function storeChallengeChoice(Request $request, Race $race)
+    public function storeChallengeChoice(Request $request, Race $race, BetMoneyService $betMoneyService)
     {
         if ($response = $this->ensureRaceBettingOpen($race)) {
             return $response;
@@ -110,7 +127,7 @@ class BetFlowController extends Controller
         $userId = (int) auth()->id();
         $choice = (string) $validated['challenge_choice'];
 
-        DB::transaction(function () use ($userId, $race, $choice) {
+        DB::transaction(function () use ($userId, $race, $choice, $betMoneyService) {
             $adjustment = RaceUserAdjustment::query()
                 ->lockForUpdate()
                 ->firstOrNew([
@@ -123,9 +140,7 @@ class BetFlowController extends Controller
                     ->whereKey($userId)
                     ->lockForUpdate()
                     ->firstOrFail();
-                $allowance = $choice === self::CHALLENGE_RACE
-                    ? self::CHALLENGE_ALLOWANCE
-                    : self::NORMAL_ALLOWANCE;
+                $allowance = $betMoneyService->allowanceForChoice($choice);
 
                 $adjustment->bonus_points = (int) ($adjustment->bonus_points ?? 0);
                 $adjustment->challenge_choice = $choice;
@@ -150,6 +165,7 @@ class BetFlowController extends Controller
         }
 
         session(['bet.current_race_id' => $race->id]);
+        $commitToken = $this->ensureCommitToken((int) $race->id);
         $cart = session($this->cartKey($race->id), [
             'race_id' => $race->id,
             'items' => [],
@@ -162,7 +178,7 @@ class BetFlowController extends Controller
             'items_count' => count($cart['items'] ?? []),
         ]);
 
-        return view('bet.cart', compact('race', 'cart'));
+        return view('bet.cart', compact('race', 'cart', 'commitToken'));
     }
 
     public function cartUpdate(Request $request, Race $race)
@@ -333,7 +349,12 @@ class BetFlowController extends Controller
     }
 
 
-    public function commit(Request $request, Race $race, BetSettlementService $settlementService)
+    public function commit(
+        Request $request,
+        Race $race,
+        BetSettlementService $settlementService,
+        BetPurchaseService $betPurchaseService
+    )
     {
         if ($response = $this->ensureRaceBettingOpen($race)) {
             return $response;
@@ -343,10 +364,21 @@ class BetFlowController extends Controller
         }
 
         $cartKey = $this->cartKey($race->id);
+        $commitTokenKey = $this->commitTokenKey((int) $race->id);
+        $expectedCommitToken = session($commitTokenKey);
         $cart = session($cartKey);
 
         if (!$cart || empty($cart['items'])) {
             return redirect()->route('bet.cart', $race)->with('error', 'カートが空です');
+        }
+
+        if (!is_string($expectedCommitToken) || $expectedCommitToken === '') {
+            $expectedCommitToken = $this->ensureCommitToken((int) $race->id);
+        }
+
+        $requestCommitToken = (string) $request->input('idempotency_key', (string) $expectedCommitToken);
+        if ($requestCommitToken !== $expectedCommitToken) {
+            return redirect()->route('bet.cart', $race)->with('error', '画面を再読み込みしてから再度お試しください。');
         }
 
         // 決定時に入力欄の最新金額を反映（更新ボタン押し忘れ対策）
@@ -395,41 +427,21 @@ class BetFlowController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($race, $cart) {
-            $stakeAmount = (int)collect($cart['items'])->sum(fn($i) => (int)$i['amount']);
-            $user = User::query()->whereKey((int) auth()->id())->lockForUpdate()->firstOrFail();
-            if ((int) ($user->current_balance ?? 0) < $stakeAmount) {
-                throw ValidationException::withMessages([
-                    'balance' => '現在残高を超えるため購入できません。',
-                ]);
-            }
             $buildSnapshot = $this->buildSnapshotFromCart($cart);
+            $isDuplicate = $betPurchaseService->commit(
+                (int) auth()->id(),
+                (int) $race->id,
+                $cart['items'],
+                $buildSnapshot,
+                $requestCommitToken
+            );
 
-            $bet = Bet::create([
-                'user_id' => $user->id,
-                'race_id' => $race->id,
-                'stake_amount' => $stakeAmount,
-                'return_amount' => 0,
-                'hit_count' => 0,
-                'roi_percent' => 0,
-                'build_snapshot' => $buildSnapshot,
-                // bought_at は model側で自動 now()
-            ]);
+            if ($isDuplicate) {
+                session()->forget($cartKey);
+                session()->forget($commitTokenKey);
 
-            $rows = collect($cart['items'])->map(fn($i) => [
-                'bet_id' => $bet->id,
-                'bet_type' => $i['bet_type'],
-                'selection_key' => $i['selection_key'],
-                'amount' => (int)$i['amount'],
-                'created_at' => now(),
-                'updated_at' => now(),
-            ])->all();
-
-            BetItem::insert($rows);
-
-            $user->current_balance = (int) ($user->current_balance ?? 0) - $stakeAmount;
-            $user->save();
-            });
+                return redirect()->route('bet.races')->with('success', '購入を確定しました。');
+            }
         } catch (ValidationException $e) {
             return redirect()->route('bet.cart', $race)
                 ->withErrors($e->errors())
@@ -441,6 +453,7 @@ class BetFlowController extends Controller
 
         // 確定したら編集不可：カートを消す（以後はDB参照のみ）
         session()->forget($cartKey);
+        session()->forget($commitTokenKey);
 
         return redirect()->route('bet.races')->with('success', '購入を確定しました');
     }

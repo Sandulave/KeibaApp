@@ -6,6 +6,7 @@ use App\Models\Race;
 use App\Models\RaceUserAdjustment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class BetCommitBalanceFeatureTest extends TestCase
@@ -97,5 +98,55 @@ class BetCommitBalanceFeatureTest extends TestCase
             'race_id' => $race->id,
             'stake_amount' => 1200,
         ]);
+    }
+
+    public function test_commit_is_idempotent_with_same_token(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'user',
+            'current_balance' => 50000,
+        ]);
+        $race = $this->createRace();
+
+        RaceUserAdjustment::create([
+            'user_id' => $user->id,
+            'race_id' => $race->id,
+            'bonus_points' => 0,
+            'challenge_choice' => 'normal',
+            'challenge_chosen_at' => now(),
+        ]);
+
+        $token = (string) Str::uuid();
+        $sessionCart = [
+            'race_id' => $race->id,
+            'items' => [
+                ['bet_type' => 'tansho', 'selection_key' => '1', 'amount' => 1200],
+                ['bet_type' => 'fukusho', 'selection_key' => '2', 'amount' => 800],
+            ],
+            'groups' => [],
+        ];
+
+        $this->actingAs($user)
+            ->withSession([
+                "bet_cart_{$race->id}" => $sessionCart,
+                "bet_commit_token_{$race->id}" => $token,
+            ])
+            ->post(route('bet.commit', $race), ['idempotency_key' => $token])
+            ->assertRedirect(route('bet.races'));
+
+        $this->actingAs($user)
+            ->withSession([
+                "bet_cart_{$race->id}" => $sessionCart,
+                "bet_commit_token_{$race->id}" => $token,
+            ])
+            ->post(route('bet.commit', $race), ['idempotency_key' => $token])
+            ->assertRedirect(route('bet.races'));
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'current_balance' => 48000,
+        ]);
+        $this->assertDatabaseCount('bets', 1);
+        $this->assertDatabaseCount('bet_items', 2);
     }
 }

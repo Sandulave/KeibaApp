@@ -11,6 +11,7 @@ class Bet extends Model
     protected $fillable = [
         'user_id',
         'race_id',
+        'idempotency_key',
         'bought_at',
         'memo',
         'stake_amount',
@@ -28,6 +29,7 @@ class Bet extends Model
             'settled_at' => 'datetime',
             'roi_percent' => 'decimal:2',
             'build_snapshot' => 'array',
+            'idempotency_key' => 'string',
         ];
     }
 

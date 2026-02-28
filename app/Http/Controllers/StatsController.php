@@ -6,11 +6,17 @@ use App\Models\Bet;
 use App\Models\Race;
 use App\Models\RaceUserAdjustment;
 use App\Models\User;
+use App\Services\Finance\BetMoneyService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class StatsController extends Controller
 {
+    public function __construct(
+        private readonly BetMoneyService $betMoneyService
+    ) {
+    }
+
     public function index(Request $request)
     {
         $viewMode = (string) $request->query('view', 'user');
@@ -118,21 +124,15 @@ class StatsController extends Controller
                         $betCount = (int)$row->bet_count;
                         $hitCount = (int)$row->total_hits;
                         $bonusPoints = (int)($row->bonus_points ?? 0);
-                        $allowanceAmount = match ($row->challenge_choice ?? null) {
-                            'challenge' => 30000,
-                            'normal' => 10000,
-                            default => 0,
-                        };
+                        $allowanceAmount = $this->betMoneyService->allowanceForChoice($row->challenge_choice);
 
-                        $row->roi_percent = $stake > 0
-                            ? round(($return / $stake) * 100, 2)
-                            : null;
+                        $row->roi_percent = $this->betMoneyService->roiPercent($stake, $return);
                         $row->hit_rate_percent = $betCount > 0
                             ? round(($hitCount / $betCount) * 100, 2)
                             : null;
                         $row->display_name = $row->user_display_name ?: $row->user_name;
                         $row->audience_role_label = $this->audienceRoleLabel($row->user_audience_role, $row->user_role);
-                        $row->profit_amount = $return - $stake + $bonusPoints;
+                        $row->profit_amount = $this->betMoneyService->profitAmount($stake, $return, $bonusPoints);
                         $row->bonus_points = $bonusPoints;
                         $row->allowance_amount = $allowanceAmount;
                         $row->total_amount = $row->profit_amount;
@@ -206,15 +206,13 @@ class StatsController extends Controller
                     $allowanceAmount = (int)($adjustment->total_allowance_amount ?? 0);
                     $totalAdjustment = $bonusPoints;
 
-                    $row->roi_percent = $stake > 0
-                        ? round(($return / $stake) * 100, 2)
-                        : null;
+                    $row->roi_percent = $this->betMoneyService->roiPercent($stake, $return);
                     $row->hit_rate_percent = $betCount > 0
                         ? round(($hitCount / $betCount) * 100, 2)
                         : null;
                     $row->display_name = $row->user_display_name ?: $row->user_name;
                     $row->audience_role_label = $this->audienceRoleLabel($row->user_audience_role, $row->user_role);
-                    $row->profit_amount = $return - $stake;
+                    $row->profit_amount = $this->betMoneyService->profitAmount($stake, $return);
                     $row->bonus_points = $bonusPoints;
                     $row->allowance_amount = $allowanceAmount;
                     $row->total_amount = (int) ($row->current_balance ?? 0);
@@ -397,12 +395,7 @@ class StatsController extends Controller
             );
 
             $newChoice = $updatedAdjustment->challenge_choice;
-            $choiceDelta = 0;
-            if ($oldChoice === 'normal' && $newChoice === 'challenge') {
-                $choiceDelta = 20_000;
-            } elseif ($oldChoice === 'challenge' && $newChoice === 'normal') {
-                $choiceDelta = -20_000;
-            }
+            $choiceDelta = $this->betMoneyService->challengeChoiceDelta($oldChoice, $newChoice);
             $newBonusPoints = (int) ($updatedAdjustment->bonus_points ?? 0);
             $bonusDelta = $newBonusPoints - $oldBonusPoints;
             $delta = $choiceDelta + $bonusDelta;
@@ -677,11 +670,7 @@ class StatsController extends Controller
                 ->first();
             $bonusPointsDelta = (int) ($adjustment?->bonus_points ?? 0);
             $challengeChoice = $adjustment?->challenge_choice;
-            $allowanceDelta = match ($challengeChoice) {
-                'challenge' => -30_000,
-                'normal' => -10_000,
-                default => 0,
-            };
+            $allowanceDelta = -$this->betMoneyService->allowanceForChoice($challengeChoice);
 
             Bet::query()
                 ->where('user_id', $user->id)
