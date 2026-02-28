@@ -78,6 +78,7 @@
                 ]
                 : [
                     'display_name' => 'ユーザー',
+                    'allowance_amount' => '配布金額',
                     'total_stake' => '投資額',
                     'total_return' => '回収額',
                     'roi_percent' => '回収率',
@@ -134,9 +135,7 @@
                                     ({{ $row->audience_role_label }})
                                 </span>
                             </td>
-                            @if ($isRaceMode)
-                                <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-right text-gray-700">{{ number_format((int) ($row->allowance_amount ?? 0)) }}円</td>
-                            @endif
+                            <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-right text-gray-700">{{ number_format((int) ($row->allowance_amount ?? 0)) }}円</td>
                             <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-700 text-right">{{ number_format((int)$row->total_stake) }}円</td>
                             <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-right text-gray-700">{{ number_format((int)$row->total_return) }}円</td>
                             <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-right">
@@ -160,7 +159,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ $isRaceMode ? 9 : 8 }}" class="px-6 py-8 text-center text-sm text-gray-500">
+                            <td colspan="9" class="px-6 py-8 text-center text-sm text-gray-500">
                                 {{ ($viewMode ?? 'user') === 'race' ? 'このレースの購入データがありません。' : 'まだ購入データがありません。' }}
                             </td>
                         </tr>

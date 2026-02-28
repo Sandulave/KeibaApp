@@ -188,6 +188,7 @@ class StatsController extends Controller
                 ->select([
                     'user_id',
                     DB::raw('COALESCE(SUM(bonus_points), 0) as total_bonus_points'),
+                    DB::raw("COALESCE(SUM(CASE challenge_choice WHEN 'challenge' THEN 30000 WHEN 'normal' THEN 10000 ELSE 0 END), 0) as total_allowance_amount"),
                 ])
                 ->groupBy('user_id')
                 ->get()
@@ -202,6 +203,7 @@ class StatsController extends Controller
                     $hitCount = (int)$row->total_hits;
                     $adjustment = $adjustmentByUser->get($row->user_id);
                     $bonusPoints = (int)($adjustment->total_bonus_points ?? 0);
+                    $allowanceAmount = (int)($adjustment->total_allowance_amount ?? 0);
                     $totalAdjustment = $bonusPoints;
 
                     $row->roi_percent = $stake > 0
@@ -214,6 +216,7 @@ class StatsController extends Controller
                     $row->audience_role_label = $this->audienceRoleLabel($row->user_audience_role, $row->user_role);
                     $row->profit_amount = $return - $stake;
                     $row->bonus_points = $bonusPoints;
+                    $row->allowance_amount = $allowanceAmount;
                     $row->total_amount = (int) ($row->current_balance ?? 0);
                     $row->total_score = $stake > 0
                         ? round(($row->total_amount / $stake) * 100, 2)
