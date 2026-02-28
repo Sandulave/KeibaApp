@@ -24,7 +24,7 @@ class DbMaintenanceModeFeatureTest extends TestCase
         $response->assertOk();
     }
 
-    public function test_login_page_is_still_available_when_maintenance_is_on(): void
+    public function test_login_page_returns_503_when_maintenance_is_on(): void
     {
         AppSetting::query()->updateOrCreate([
             'key' => 'maintenance_enabled',
@@ -34,7 +34,7 @@ class DbMaintenanceModeFeatureTest extends TestCase
 
         $response = $this->get('/login');
 
-        $response->assertOk();
+        $response->assertStatus(503);
     }
 
     public function test_non_admin_user_gets_503_when_maintenance_is_on(): void

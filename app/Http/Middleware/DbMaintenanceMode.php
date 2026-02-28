@@ -21,7 +21,7 @@ class DbMaintenanceMode
             return $next($request);
         }
 
-        if ($request->routeIs('login') || $request->routeIs('auth.discord.*') || $request->routeIs('admin.login*')) {
+        if ($request->routeIs('admin.login*')) {
             return $next($request);
         }
 
