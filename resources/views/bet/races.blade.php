@@ -21,7 +21,7 @@
 
         <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 overflow-hidden">
             <div class="overflow-x-auto">
-            <table class="w-full table-auto">
+            <table class="w-full min-w-[760px] table-auto">
                 <thead>
                     <tr class="bg-gray-50 border-b border-gray-200">
                         <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">名前</th>
@@ -61,26 +61,26 @@
                                     </span>
                                 @endif
                             </td>
-                            <td class="px-3 sm:px-4 py-3 sm:py-4 text-sm {{ $isHorseCountInvalid ? 'text-gray-500' : 'text-gray-600' }}">
-                                <div class="flex flex-wrap items-center gap-2">
+                            <td class="px-3 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-sm {{ $isHorseCountInvalid ? 'text-gray-500' : 'text-gray-600' }}">
+                                <div class="flex flex-nowrap items-center gap-2">
                                     @if ($isPurchaseDisabled)
                                         <span
-                                            class="inline-flex items-center rounded-md bg-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-500 cursor-not-allowed">
+                                            class="inline-flex shrink-0 whitespace-nowrap items-center rounded-md bg-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-500 cursor-not-allowed">
                                             購入不可
                                         </span>
                                     @else
                                         <a href="{{ route('bet.challenge.select', $race) }}"
-                                            class="inline-flex items-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition">
+                                            class="inline-flex shrink-0 whitespace-nowrap items-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition">
                                             購入へ
                                         </a>
                                     @endif
                                     @if ($isDetailDisabled)
-                                        <span class="inline-flex items-center rounded-md border border-gray-200 bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-500 cursor-not-allowed">
+                                        <span class="inline-flex shrink-0 whitespace-nowrap items-center rounded-md border border-gray-200 bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-500 cursor-not-allowed">
                                             購入馬券詳細
                                         </span>
                                     @else
                                         <a href="{{ route('stats.users.race-bets', [auth()->id(), $race->id]) }}"
-                                            class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition">
+                                            class="inline-flex shrink-0 whitespace-nowrap items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition">
                                             購入馬券詳細
                                         </a>
                                     @endif
