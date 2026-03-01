@@ -272,4 +272,69 @@ class RaceSettlementFeatureTest extends TestCase
             ->assertRedirect(route('races.settlement.edit', $race));
         $this->assertSame(840, (int) $admin->fresh()->current_balance);
     }
+
+    public function test_settlement_recalculates_balance_when_payout_is_corrected(): void
+    {
+        $admin = $this->adminUser();
+        $race = $this->createRace();
+        $admin->forceFill(['current_balance' => 1000])->save();
+
+        $bet = Bet::create([
+            'user_id' => $admin->id,
+            'race_id' => $race->id,
+            'stake_amount' => 100,
+            'return_amount' => 0,
+        ]);
+
+        BetItem::create([
+            'bet_id' => $bet->id,
+            'bet_type' => 'tansho',
+            'selection_key' => '4',
+            'amount' => 100,
+        ]);
+
+        $wrongPayload = [
+            'ranks' => [
+                1 => [4],
+                2 => [1],
+                3 => [2],
+            ],
+            'withdrawals' => [],
+            'payouts' => [
+                'tansho' => [
+                    ['selection_key' => '4', 'payout_per_100' => 500, 'popularity' => 1],
+                ],
+            ],
+        ];
+
+        $this->actingAs($admin)
+            ->post(route('races.settlement.update', $race), $wrongPayload)
+            ->assertRedirect(route('races.settlement.edit', $race));
+
+        $this->assertSame(1500, (int) $admin->fresh()->current_balance);
+
+        $correctedPayload = [
+            'ranks' => [
+                1 => [4],
+                2 => [1],
+                3 => [2],
+            ],
+            'withdrawals' => [],
+            'payouts' => [
+                'tansho' => [
+                    ['selection_key' => '4', 'payout_per_100' => 300, 'popularity' => 1],
+                ],
+            ],
+        ];
+
+        $this->actingAs($admin)
+            ->post(route('races.settlement.update', $race), $correctedPayload)
+            ->assertRedirect(route('races.settlement.edit', $race));
+
+        $this->assertSame(1300, (int) $admin->fresh()->current_balance);
+        $this->assertDatabaseHas('bets', [
+            'id' => $bet->id,
+            'return_amount' => 300,
+        ]);
+    }
 }
