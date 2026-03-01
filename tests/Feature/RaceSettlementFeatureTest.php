@@ -337,4 +337,47 @@ class RaceSettlementFeatureTest extends TestCase
             'return_amount' => 300,
         ]);
     }
+
+    public function test_settlement_rebuilds_current_balance_even_when_return_amount_has_no_delta(): void
+    {
+        $admin = $this->adminUser();
+        $race = $this->createRace();
+        $admin->forceFill(['current_balance' => 9999])->save();
+
+        $bet = Bet::create([
+            'user_id' => $admin->id,
+            'race_id' => $race->id,
+            'stake_amount' => 100,
+            'return_amount' => 300,
+        ]);
+
+        BetItem::create([
+            'bet_id' => $bet->id,
+            'bet_type' => 'tansho',
+            'selection_key' => '4',
+            'amount' => 100,
+            'return_amount' => 300,
+            'is_hit' => true,
+        ]);
+
+        $payload = [
+            'ranks' => [
+                1 => [4],
+                2 => [1],
+                3 => [2],
+            ],
+            'withdrawals' => [],
+            'payouts' => [
+                'tansho' => [
+                    ['selection_key' => '4', 'payout_per_100' => 300, 'popularity' => 1],
+                ],
+            ],
+        ];
+
+        $this->actingAs($admin)
+            ->post(route('races.settlement.update', $race), $payload)
+            ->assertRedirect(route('races.settlement.edit', $race));
+
+        $this->assertSame(200, (int) $admin->fresh()->current_balance);
+    }
 }

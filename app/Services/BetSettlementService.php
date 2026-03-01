@@ -23,7 +23,12 @@ class BetSettlementService
             $bets = Bet::where('race_id', $raceId)
                 ->with('items')
                 ->get();
-            $balanceDeltaByUser = [];
+            $affectedUserIds = $bets
+                ->pluck('user_id')
+                ->map(fn ($id) => (int) $id)
+                ->filter(fn (int $id) => $id > 0)
+                ->unique()
+                ->values();
 
             foreach ($bets as $bet) {
                 $stakeAmount = 0;
@@ -52,13 +57,6 @@ class BetSettlementService
                     }
                 }
 
-                $previousReturnAmount = (int) ($bet->return_amount ?? 0);
-                $returnDelta = $returnAmount - $previousReturnAmount;
-                if ($returnDelta !== 0) {
-                    $userId = (int) $bet->user_id;
-                    $balanceDeltaByUser[$userId] = (int) ($balanceDeltaByUser[$userId] ?? 0) + $returnDelta;
-                }
-
                 $bet->stake_amount = $stakeAmount;
                 $bet->return_amount = $returnAmount;
                 $bet->hit_count = $hitCount;
@@ -69,21 +67,42 @@ class BetSettlementService
                 $bet->save();
             }
 
-            foreach ($balanceDeltaByUser as $userId => $delta) {
-                if ((int) $delta === 0) {
-                    continue;
-                }
+            if ($affectedUserIds->isEmpty()) {
+                return;
+            }
+
+            $userIds = $affectedUserIds->all();
+            $betTotalsByUser = DB::table('bets')
+                ->selectRaw('user_id, COALESCE(SUM(stake_amount), 0) as total_stake, COALESCE(SUM(return_amount), 0) as total_return')
+                ->whereIn('user_id', $userIds)
+                ->groupBy('user_id')
+                ->get()
+                ->keyBy('user_id');
+
+            $adjustmentTotalsByUser = DB::table('race_user_adjustments')
+                ->selectRaw("user_id, COALESCE(SUM(bonus_points), 0) as total_bonus_points, COALESCE(SUM(CASE challenge_choice WHEN 'challenge' THEN 30000 WHEN 'normal' THEN 10000 ELSE 0 END), 0) as total_allowance")
+                ->whereIn('user_id', $userIds)
+                ->groupBy('user_id')
+                ->get()
+                ->keyBy('user_id');
+
+            foreach ($userIds as $userId) {
+                $betTotal = $betTotalsByUser->get($userId);
+                $adjustmentTotal = $adjustmentTotalsByUser->get($userId);
+                $expectedBalance = (int) ($betTotal->total_return ?? 0)
+                    - (int) ($betTotal->total_stake ?? 0)
+                    + (int) ($adjustmentTotal->total_bonus_points ?? 0)
+                    + (int) ($adjustmentTotal->total_allowance ?? 0);
 
                 $user = User::query()
                     ->whereKey($userId)
                     ->lockForUpdate()
                     ->first();
-
                 if ($user === null) {
                     continue;
                 }
 
-                $user->current_balance = (int) ($user->current_balance ?? 0) + (int) $delta;
+                $user->current_balance = $expectedBalance;
                 $user->save();
             }
         });
