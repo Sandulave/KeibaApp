@@ -154,6 +154,7 @@ class RaceSettlementFeatureTest extends TestCase
     {
         $admin = $this->adminUser();
         $race = $this->createRace();
+        $admin->forceFill(['current_balance' => 1000])->save();
 
         $bet = Bet::create([
             'user_id' => $admin->id,
@@ -224,5 +225,51 @@ class RaceSettlementFeatureTest extends TestCase
             'hit_count' => 2,
             'roi_percent' => 615.00,
         ]);
+        $this->assertSame(2230, (int) $admin->fresh()->current_balance);
+    }
+
+    public function test_settlement_recalculation_does_not_double_add_return_to_current_balance(): void
+    {
+        $admin = $this->adminUser();
+        $race = $this->createRace();
+        $admin->forceFill(['current_balance' => 500])->save();
+
+        $bet = Bet::create([
+            'user_id' => $admin->id,
+            'race_id' => $race->id,
+            'stake_amount' => 100,
+            'return_amount' => 0,
+        ]);
+
+        BetItem::create([
+            'bet_id' => $bet->id,
+            'bet_type' => 'tansho',
+            'selection_key' => '4',
+            'amount' => 100,
+        ]);
+
+        $payload = [
+            'ranks' => [
+                1 => [4],
+                2 => [1],
+                3 => [2],
+            ],
+            'withdrawals' => [],
+            'payouts' => [
+                'tansho' => [
+                    ['selection_key' => '4', 'payout_per_100' => 340, 'popularity' => 2],
+                ],
+            ],
+        ];
+
+        $this->actingAs($admin)
+            ->post(route('races.settlement.update', $race), $payload)
+            ->assertRedirect(route('races.settlement.edit', $race));
+        $this->assertSame(840, (int) $admin->fresh()->current_balance);
+
+        $this->actingAs($admin)
+            ->post(route('races.settlement.update', $race), $payload)
+            ->assertRedirect(route('races.settlement.edit', $race));
+        $this->assertSame(840, (int) $admin->fresh()->current_balance);
     }
 }

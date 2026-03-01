@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Bet;
 use App\Models\RacePayout;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class BetSettlementService
@@ -22,6 +23,7 @@ class BetSettlementService
             $bets = Bet::where('race_id', $raceId)
                 ->with('items')
                 ->get();
+            $balanceDeltaByUser = [];
 
             foreach ($bets as $bet) {
                 $stakeAmount = 0;
@@ -50,6 +52,13 @@ class BetSettlementService
                     }
                 }
 
+                $previousReturnAmount = (int) ($bet->return_amount ?? 0);
+                $returnDelta = $returnAmount - $previousReturnAmount;
+                if ($returnDelta !== 0) {
+                    $userId = (int) $bet->user_id;
+                    $balanceDeltaByUser[$userId] = (int) ($balanceDeltaByUser[$userId] ?? 0) + $returnDelta;
+                }
+
                 $bet->stake_amount = $stakeAmount;
                 $bet->return_amount = $returnAmount;
                 $bet->hit_count = $hitCount;
@@ -58,6 +67,24 @@ class BetSettlementService
                     : null;
                 $bet->settled_at = $hasPayouts ? now() : null;
                 $bet->save();
+            }
+
+            foreach ($balanceDeltaByUser as $userId => $delta) {
+                if ((int) $delta === 0) {
+                    continue;
+                }
+
+                $user = User::query()
+                    ->whereKey($userId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($user === null) {
+                    continue;
+                }
+
+                $user->current_balance = (int) ($user->current_balance ?? 0) + (int) $delta;
+                $user->save();
             }
         });
     }
