@@ -24,3 +24,4 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 *:Zone.Identifier
+laravelcloud_dump.sql
