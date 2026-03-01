@@ -8,7 +8,9 @@
     <x-input-error :messages="$errors->get('discord')" class="mb-4" />
 
     <div class="mt-4">
-        <p class="mb-3 text-sm text-gray-600">ログインはDiscordアカウントのみ対応しています。</p>
+        <p class="mb-2 text-sm text-gray-600">ログインはDiscordアカウントのみ対応しています。</p>
+        <p class="mb-3 text-xs text-amber-700">初心者G1馬券バトルチャンネルにログインしているアカウントでログインしてください。</p>
+        <p class="mb-3 text-xs text-amber-700">別アカウントが表示された場合は、ブラウザ版Discordから一度ログアウトし、正しいアカウントでログインし直してから再度お試しください。</p>
         <a
             href="{{ route('auth.discord.redirect', [], false) }}"
             class="inline-flex w-full items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50"

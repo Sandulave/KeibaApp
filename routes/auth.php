@@ -27,6 +27,15 @@ Route::middleware('guest')->group(function () {
 
     Route::get('login/discord/callback', [DiscordAuthController::class, 'callback'])
         ->name('auth.discord.callback');
+
+    Route::get('login/discord/register-notice', [DiscordAuthController::class, 'showRegistrationNotice'])
+        ->name('auth.discord.register.notice');
+
+    Route::post('login/discord/register-notice', [DiscordAuthController::class, 'completeRegistration'])
+        ->name('auth.discord.register.complete');
+
+    Route::post('login/discord/register-notice/cancel', [DiscordAuthController::class, 'cancelRegistration'])
+        ->name('auth.discord.register.cancel');
 });
 
 Route::middleware('auth')->group(function () {

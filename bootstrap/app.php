@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
+            'audience_role.selected' => \App\Http\Middleware\EnsureAudienceRoleSelected::class,
         ]);
 
         $middleware->web(append: [

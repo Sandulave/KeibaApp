@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -24,7 +25,7 @@ class DiscordAuthController extends Controller
             'response_type' => 'code',
             'scope' => 'identify',
             'state' => $state,
-            'prompt' => 'none',
+            'prompt' => config('services.discord.prompt', 'consent'),
         ]);
 
         return redirect('https://discord.com/oauth2/authorize?'.$query);
@@ -73,14 +74,49 @@ class DiscordAuthController extends Controller
 
         $discordUser = $discordUserResponse->json();
         $discordId = (string) $discordUser['id'];
-        $legacyName = 'discord_'.$discordId;
-        $user = User::query()->where('discord_id', $discordId)->first();
+        $user = $this->findUserByDiscordId($discordId);
+
+        if ($user && $user->discord_id !== $discordId) {
+            $user->forceFill(['discord_id' => $discordId])->save();
+        }
 
         if (! $user) {
-            $user = User::query()
-                ->whereIn('name', [$discordId, $legacyName])
-                ->first();
+            $request->session()->put('pending_discord_registration', [
+                'discord_id' => $discordId,
+                'display_name' => $discordUser['global_name'] ?? $discordUser['username'] ?? null,
+            ]);
+
+            return redirect()->route('auth.discord.register.notice');
         }
+
+        return $this->loginAndRedirect($request, $user);
+    }
+
+    public function showRegistrationNotice(Request $request): View|RedirectResponse
+    {
+        $pending = $request->session()->get('pending_discord_registration');
+
+        if (! is_array($pending) || ! isset($pending['discord_id'])) {
+            return redirect()->route('login');
+        }
+
+        return view('auth.discord-register-notice', [
+            'pendingDiscord' => $pending,
+        ]);
+    }
+
+    public function completeRegistration(Request $request): RedirectResponse
+    {
+        $pending = $request->session()->pull('pending_discord_registration');
+
+        if (! is_array($pending) || ! isset($pending['discord_id'])) {
+            return redirect()->route('login')->withErrors([
+                'discord' => 'Discordログインの確認情報が見つかりません。もう一度お試しください。',
+            ]);
+        }
+
+        $discordId = (string) $pending['discord_id'];
+        $user = $this->findUserByDiscordId($discordId);
 
         if ($user && $user->discord_id !== $discordId) {
             $user->forceFill(['discord_id' => $discordId])->save();
@@ -89,16 +125,41 @@ class DiscordAuthController extends Controller
         if (! $user) {
             $user = User::create([
                 'name' => $discordId,
-                'display_name' => $discordUser['global_name'] ?? $discordUser['username'] ?? null,
+                'display_name' => $pending['display_name'] ?? null,
                 'password' => Str::password(32),
                 'discord_id' => $discordId,
             ]);
         }
 
+        return $this->loginAndRedirect($request, $user);
+    }
+
+    public function cancelRegistration(Request $request): RedirectResponse
+    {
+        $request->session()->forget('pending_discord_registration');
+
+        return redirect()->route('login')->with('status', 'Discordログインをキャンセルしました。');
+    }
+
+    private function findUserByDiscordId(string $discordId): ?User
+    {
+        $legacyName = 'discord_'.$discordId;
+        $user = User::query()->where('discord_id', $discordId)->first();
+
+        if ($user) {
+            return $user;
+        }
+
+        return User::query()
+            ->whereIn('name', [$discordId, $legacyName])
+            ->first();
+    }
+
+    private function loginAndRedirect(Request $request, User $user): RedirectResponse
+    {
         Auth::login($user, remember: true);
         $request->session()->regenerate();
 
         return redirect()->intended(route('dashboard', absolute: false));
     }
-
 }

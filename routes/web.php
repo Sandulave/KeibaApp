@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\MaintenanceController;
+use App\Http\Controllers\AudienceRoleController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RaceController;
 use App\Http\Controllers\RacePayoutController;
@@ -18,7 +19,7 @@ Route::get('/dashboard', function () {
     return $user->isAdmin()
         ? redirect()->route('races.index')
         : redirect()->route('bet.races');
-})->middleware('auth')->name('dashboard');
+})->middleware(['auth', 'audience_role.selected'])->name('dashboard');
 
 // 管理者だけ：レース管理
 Route::middleware(['auth', 'role:group:admin'])->group(function () {
@@ -39,7 +40,7 @@ Route::middleware(['auth', 'role:group:admin'])->group(function () {
 });
 
 // 一般ユーザー（＋adminも閲覧OKなら含める）
-Route::middleware(['auth', 'role:group:stats_access'])->group(function () {
+Route::middleware(['auth', 'audience_role.selected', 'role:group:stats_access'])->group(function () {
     Route::get('/stats', [StatsController::class, 'index'])->name('stats.index');
     Route::get('/stats/users/{user}', [StatsController::class, 'show'])->name('stats.users.show');
     Route::get('/stats/users/{user}/races/{race}/bets', [StatsController::class, 'raceBets'])->name('stats.users.race-bets');
@@ -73,6 +74,9 @@ Route::middleware(['auth', 'role:group:stats_access'])->group(function () {
 
 // Breezeのプロフィール系
 Route::middleware('auth')->group(function () {
+    Route::get('/audience-role', [AudienceRoleController::class, 'edit'])->name('audience-role.edit');
+    Route::put('/audience-role', [AudienceRoleController::class, 'update'])->name('audience-role.update');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
