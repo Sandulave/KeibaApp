@@ -7,7 +7,7 @@
         <meta http-equiv="Content-Language" content="ja">
         <meta name="google" content="notranslate">
 
-        <title>{{ config('app.name', 'Laravel') }}</title>
+        <title>{{ config('app.name', '初心者G1馬券バトル') }}</title>
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
