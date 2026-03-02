@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="Content-Language" content="ja">
     <meta name="google" content="notranslate">
-    <title>メンテナンス中 | {{ config('app.name') }}</title>
+    <title>メンテナンス中 | 初心者G1馬券バトル</title>
     <style>
         :root {
             color-scheme: light;
@@ -104,7 +104,7 @@
         <span class="badge">503 SERVICE UNAVAILABLE</span>
         <h1>ただいまメンテナンス中です</h1>
         <p>
-            {{ config('app.name') }} は現在、機能改善のため一時的に利用できません。<br>
+            初心者G1馬券バトル は現在、機能改善のため一時的に利用できません。<br>
             しばらくしてから再度アクセスしてください。
         </p>
 
