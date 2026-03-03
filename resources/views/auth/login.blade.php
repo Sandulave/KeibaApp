@@ -20,5 +20,12 @@
         <a href="{{ route('admin.login', [], false) }}" class="mt-3 inline-block text-sm text-gray-600 hover:text-gray-900">
             管理者ログインはこちら
         </a>
+        <p class="mt-4 text-xs leading-5 text-gray-600">
+            ログインすることで、
+            <a href="{{ route('terms', [], false) }}" class="underline hover:text-gray-900">利用規約</a>
+            および
+            <a href="{{ route('privacy', [], false) }}" class="underline hover:text-gray-900">プライバシーポリシー</a>
+            に同意したものとみなされます。
+        </p>
     </div>
 </x-guest-layout>

@@ -12,6 +12,9 @@ use App\Http\Controllers\StatsController;
 
 Route::get('/', fn() => redirect()->route('dashboard'));
 
+Route::view('/terms', 'legal.terms')->name('terms');
+Route::view('/privacy', 'legal.privacy')->name('privacy');
+
 // ログイン後の分岐
 Route::get('/dashboard', function () {
     $user = auth()->user();
