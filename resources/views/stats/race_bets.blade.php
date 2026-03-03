@@ -3,7 +3,9 @@
         <div>
             <div class="flex flex-wrap items-center gap-4">
                 <a href="{{ route('stats.users.show', $user) }}" class="text-sm text-blue-600 hover:underline">← 個別成績に戻る</a>
-                <a href="{{ route('bet.races') }}" class="text-sm text-blue-600 hover:underline">← レース選択に戻る</a>
+                @auth
+                    <a href="{{ route('bet.races') }}" class="text-sm text-blue-600 hover:underline">← レース選択に戻る</a>
+                @endauth
             </div>
             <h1 class="mt-2 text-xl sm:text-2xl font-bold tracking-tight">{{ $displayName }} / {{ $race->name }} の馬券詳細</h1>
             <p class="mt-1 text-sm text-gray-500">開催日: {{ $race->race_date }}</p>

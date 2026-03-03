@@ -250,8 +250,8 @@ class StatsController extends Controller
     {
         abort_if($user->isAdmin(), 404);
         $actor = request()->user();
-        $isAdmin = $actor->isAdmin();
-        $canEditAdjustments = $isAdmin || $actor->id === $user->id;
+        $isAdmin = $actor?->isAdmin() ?? false;
+        $canEditAdjustments = $actor !== null && ($isAdmin || $actor->id === $user->id);
         $adjustmentMax = (int) config('domain.stats.adjustment_max', 1_000_000);
 
         $displayName = $user->display_name ?: $user->name;

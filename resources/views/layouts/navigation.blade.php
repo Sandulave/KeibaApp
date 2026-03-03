@@ -10,7 +10,7 @@
     $isStatsPage = request()->routeIs('stats.index');
     $routeUser = request()->route('user');
     $routeUserId = $routeUser instanceof \App\Models\User ? (int) $routeUser->id : (int) $routeUser;
-    $isPersonalStatsPage = request()->routeIs('stats.users.show') && $routeUserId === (int) auth()->id();
+    $isPersonalStatsPage = auth()->check() && request()->routeIs('stats.users.show') && $routeUserId === (int) auth()->id();
     $isRaceSelectPage = request()->routeIs('races.*')
         || request()->routeIs('bet.races')
         || request()->routeIs('bet.challenge.select')
@@ -48,15 +48,19 @@
                     成績ランキング
                 </a>
 
-                <a href="{{ route('stats.users.show', auth()->id()) }}"
-                    class="text-xs sm:text-sm font-medium text-gray-700 hover:text-gray-900 transition {{ $isPersonalStatsPage ? 'underline underline-offset-4' : '' }}">
-                    個人成績
-                </a>
+                @auth
+                    <a href="{{ route('stats.users.show', auth()->id()) }}"
+                        class="text-xs sm:text-sm font-medium text-gray-700 hover:text-gray-900 transition {{ $isPersonalStatsPage ? 'underline underline-offset-4' : '' }}">
+                        個人成績
+                    </a>
+                @endauth
 
-                <a href="{{ $raceSelectRoute }}"
-                    class="text-xs sm:text-sm font-medium text-gray-700 hover:text-gray-900 transition {{ $isRaceSelectPage ? 'underline underline-offset-4' : '' }}">
-                    馬券購入
-                </a>
+                @auth
+                    <a href="{{ $raceSelectRoute }}"
+                        class="text-xs sm:text-sm font-medium text-gray-700 hover:text-gray-900 transition {{ $isRaceSelectPage ? 'underline underline-offset-4' : '' }}">
+                        馬券購入
+                    </a>
+                @endauth
 
                 @if ($isAdmin)
                     <a href="{{ route('admin.maintenance.edit') }}"
@@ -77,13 +81,15 @@
                     </a>
                 @endif
 
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <button type="submit"
-                        class="px-3 py-1.5 sm:px-4 sm:py-2 bg-gray-800 text-white font-bold rounded-md hover:bg-black transition text-xs sm:text-sm">
-                        ログアウト
-                    </button>
-                </form>
+                @auth
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button type="submit"
+                            class="px-3 py-1.5 sm:px-4 sm:py-2 bg-gray-800 text-white font-bold rounded-md hover:bg-black transition text-xs sm:text-sm">
+                            ログアウト
+                        </button>
+                    </form>
+                @endauth
             </div>
         </div>
     </div>

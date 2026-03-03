@@ -42,11 +42,13 @@ Route::middleware(['auth', 'role:group:admin'])->group(function () {
         });
 });
 
+// 成績は未ログインでも閲覧可能
+Route::get('/stats', [StatsController::class, 'index'])->name('stats.index');
+Route::get('/stats/users/{user}', [StatsController::class, 'show'])->name('stats.users.show');
+Route::get('/stats/users/{user}/races/{race}/bets', [StatsController::class, 'raceBets'])->name('stats.users.race-bets');
+
 // 一般ユーザー（＋adminも閲覧OKなら含める）
 Route::middleware(['auth', 'audience_role.selected', 'role:group:stats_access'])->group(function () {
-    Route::get('/stats', [StatsController::class, 'index'])->name('stats.index');
-    Route::get('/stats/users/{user}', [StatsController::class, 'show'])->name('stats.users.show');
-    Route::get('/stats/users/{user}/races/{race}/bets', [StatsController::class, 'raceBets'])->name('stats.users.race-bets');
     Route::post('/stats/users/{user}/adjustments', [StatsController::class, 'updateAdjustment'])->name('stats.users.adjustments.update');
     Route::delete('/stats/users/{user}/adjustments', [StatsController::class, 'destroyAdjustment'])->name('stats.users.adjustments.destroy');
 

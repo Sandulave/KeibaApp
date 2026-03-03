@@ -209,6 +209,46 @@ class StatsFeatureTest extends TestCase
         $response->assertSee('三連複');
     }
 
+    public function test_guest_can_view_stats_pages(): void
+    {
+        $owner = User::factory()->create(['role' => 'user']);
+        $race = $this->createRace();
+
+        Bet::create([
+            'user_id' => $owner->id,
+            'race_id' => $race->id,
+            'stake_amount' => 1000,
+            'return_amount' => 1200,
+            'hit_count' => 1,
+            'roi_percent' => 120.00,
+        ]);
+
+        RaceUserAdjustment::create([
+            'user_id' => $owner->id,
+            'race_id' => $race->id,
+            'bonus_points' => 0,
+        ]);
+
+        $this->get(route('stats.index'))->assertOk();
+        $this->get(route('stats.users.show', $owner))->assertOk();
+        $this->get(route('stats.users.race-bets', [$owner, $race]))->assertOk();
+    }
+
+    public function test_guest_cannot_update_or_destroy_adjustment(): void
+    {
+        $owner = User::factory()->create(['role' => 'user']);
+        $race = $this->createRace();
+
+        $this->post(route('stats.users.adjustments.update', $owner), [
+            'race_id' => $race->id,
+            'bonus_points' => 100,
+        ])->assertRedirect(route('login'));
+
+        $this->delete(route('stats.users.adjustments.destroy', $owner), [
+            'race_id' => $race->id,
+        ])->assertRedirect(route('login'));
+    }
+
     public function test_stats_index_sorts_by_total_desc_then_stake_asc(): void
     {
         $viewer = User::factory()->create(['role' => 'user']);
