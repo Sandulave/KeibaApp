@@ -20,6 +20,7 @@
         $cartCount = is_array($currentCart) ? count($currentCart['items'] ?? []) : 0;
     }
     $canOpenBetUi = auth()->check() && !$isAdmin;
+    $canShowBetLink = auth()->check();
     $raceSelectRoute = $isAdmin && !$canOpenBetUi ? route('races.index') : route('bet.races');
     $isStatsPage = request()->routeIs('stats.index');
     $routeUser = request()->route('user');
@@ -72,7 +73,7 @@
                     @endif
                 @endauth
 
-                @if ($canOpenBetUi)
+                @if ($canShowBetLink)
                     <a href="{{ $raceSelectRoute }}"
                         class="text-xs sm:text-sm font-medium text-gray-700 hover:text-gray-900 transition {{ $isRaceSelectPage ? 'underline underline-offset-4' : '' }}">
                         馬券購入

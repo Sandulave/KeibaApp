@@ -49,6 +49,7 @@
                                 @endif
                             </td>
                             <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-sm font-medium space-x-2 cursor-auto" onclick="event.stopPropagation()">
+                                <a href="{{ route('races.show', $race) }}" class="text-emerald-600 hover:text-emerald-900">レース詳細</a>
                                 <a href="{{ route('races.edit', $race) }}" class="text-blue-600 hover:text-blue-900">編集</a>
                                 <form action="{{ route('races.destroy', $race) }}" method="POST" style="display:inline;" onsubmit="event.stopPropagation(); return confirm('削除しますか？')">
                                     @csrf
