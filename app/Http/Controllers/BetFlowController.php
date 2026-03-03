@@ -21,6 +21,7 @@ class BetFlowController extends Controller
 {
     private const CHALLENGE_NORMAL = 'normal';
     private const CHALLENGE_RACE = 'challenge';
+    private const PROXY_USER_SESSION_KEY = 'admin_proxy.user_id';
 
     private function ensureRaceBettingOpen(Race $race)
     {
@@ -33,16 +34,65 @@ class BetFlowController extends Controller
             ->with('error', 'このレースは投票終了のため購入できません。');
     }
 
+    private function proxyTargetUserId(): ?int
+    {
+        $actor = auth()->user();
+        if (!$actor || !$actor->isAdmin()) {
+            return null;
+        }
+
+        $targetUserId = (int) session(self::PROXY_USER_SESSION_KEY, 0);
+        if ($targetUserId <= 0) {
+            return null;
+        }
+
+        $targetUser = User::query()->find($targetUserId);
+        if ($targetUser === null || $targetUser->isAdmin()) {
+            session()->forget(self::PROXY_USER_SESSION_KEY);
+            return null;
+        }
+
+        return $targetUserId;
+    }
+
+    private function isProxyMode(): bool
+    {
+        return $this->proxyTargetUserId() !== null;
+    }
+
+    private function ensureBetActorSelected()
+    {
+        $actor = auth()->user();
+        if (!$actor || !$actor->isAdmin()) {
+            return null;
+        }
+
+        if ($this->proxyTargetUserId() !== null) {
+            return null;
+        }
+
+        return redirect()
+            ->route('admin.proxy-entry.edit')
+            ->with('error', '管理者アカウントでは直接購入できません。代理入力対象ユーザーを選択してください。');
+    }
+
+    private function activeUserId(): int
+    {
+        return $this->proxyTargetUserId() ?? (int) auth()->id();
+    }
+
     private function cartKey(int $raceId): string
     {
         // レースごとにカートを分ける（他レースを誤爆しない）
         // NOTE: ドット区切りは既存セッション構造と衝突する場合があるため、フラットキーで保持する
-        return "bet_cart_{$raceId}";
+        $userId = $this->activeUserId();
+        return "bet_cart_{$userId}_{$raceId}";
     }
 
     private function commitTokenKey(int $raceId): string
     {
-        return "bet_commit_token_{$raceId}";
+        $userId = $this->activeUserId();
+        return "bet_commit_token_{$userId}_{$raceId}";
     }
 
     private function ensureCommitToken(int $raceId): string
@@ -68,7 +118,7 @@ class BetFlowController extends Controller
 
     private function ensureChallengeChoiceSelected(Race $race)
     {
-        $choice = $this->challengeChoiceForUserRace((int) auth()->id(), (int) $race->id);
+        $choice = $this->challengeChoiceForUserRace($this->activeUserId(), (int) $race->id);
         if ($choice !== null) {
             return null;
         }
@@ -80,7 +130,11 @@ class BetFlowController extends Controller
 
     public function selectRace()
     {
-        $userId = (int) auth()->id();
+        if ($response = $this->ensureBetActorSelected()) {
+            return $response;
+        }
+
+        $userId = $this->activeUserId();
         $races = \App\Models\Race::withCount('payouts')
             ->orderBy('race_date', 'asc')
             ->orderBy('id', 'asc')
@@ -92,16 +146,19 @@ class BetFlowController extends Controller
             ->whereIn('race_id', $races->pluck('id'))
             ->pluck('challenge_choice', 'race_id');
 
-        return view('bet.races', compact('races', 'challengeChoices'));
+        return view('bet.races', compact('races', 'challengeChoices', 'userId'));
     }
 
     public function selectChallenge(Race $race)
     {
+        if ($response = $this->ensureBetActorSelected()) {
+            return $response;
+        }
         if ($response = $this->ensureRaceBettingOpen($race)) {
             return $response;
         }
 
-        $choice = $this->challengeChoiceForUserRace((int) auth()->id(), (int) $race->id);
+        $choice = $this->challengeChoiceForUserRace($this->activeUserId(), (int) $race->id);
         if ($choice !== null) {
             return redirect()->route('bet.types', $race);
         }
@@ -113,6 +170,9 @@ class BetFlowController extends Controller
 
     public function storeChallengeChoice(Request $request, Race $race, BetMoneyService $betMoneyService)
     {
+        if ($response = $this->ensureBetActorSelected()) {
+            return $response;
+        }
         if ($response = $this->ensureRaceBettingOpen($race)) {
             return $response;
         }
@@ -124,7 +184,7 @@ class BetFlowController extends Controller
             'challenge_choice.in' => '選択内容が不正です。',
         ]);
 
-        $userId = (int) auth()->id();
+        $userId = $this->activeUserId();
         $choice = (string) $validated['challenge_choice'];
 
         DB::transaction(function () use ($userId, $race, $choice, $betMoneyService) {
@@ -157,6 +217,9 @@ class BetFlowController extends Controller
 
     public function cart(Race $race)
     {
+        if ($response = $this->ensureBetActorSelected()) {
+            return $response;
+        }
         if ($response = $this->ensureRaceBettingOpen($race)) {
             return $response;
         }
@@ -172,7 +235,8 @@ class BetFlowController extends Controller
             'groups' => [],
         ]);
         Log::info('bet.cart.view', [
-            'user_id' => auth()->id(),
+            'user_id' => $this->activeUserId(),
+            'is_proxy_mode' => $this->isProxyMode(),
             'race_id' => $race->id,
             'session_id' => session()->getId(),
             'items_count' => count($cart['items'] ?? []),
@@ -183,6 +247,9 @@ class BetFlowController extends Controller
 
     public function cartUpdate(Request $request, Race $race)
     {
+        if ($response = $this->ensureBetActorSelected()) {
+            return $response;
+        }
         if ($response = $this->ensureRaceBettingOpen($race)) {
             return $response;
         }
@@ -356,6 +423,9 @@ class BetFlowController extends Controller
         BetPurchaseService $betPurchaseService
     )
     {
+        if ($response = $this->ensureBetActorSelected()) {
+            return $response;
+        }
         if ($response = $this->ensureRaceBettingOpen($race)) {
             return $response;
         }
@@ -429,7 +499,7 @@ class BetFlowController extends Controller
         try {
             $buildSnapshot = $this->buildSnapshotFromCart($cart);
             $isDuplicate = $betPurchaseService->commit(
-                (int) auth()->id(),
+                $this->activeUserId(),
                 (int) $race->id,
                 $cart['items'],
                 $buildSnapshot,
@@ -460,6 +530,9 @@ class BetFlowController extends Controller
 
     public function cartAdd(Request $request, Race $race, CartService $cartService, BuilderResolver $resolver)
     {
+        if ($response = $this->ensureBetActorSelected()) {
+            return $response;
+        }
         if ($response = $this->ensureRaceBettingOpen($race)) {
             return $response;
         }
@@ -487,7 +560,8 @@ class BetFlowController extends Controller
         $itemCount = count($items);
         $pointCountMax = (int) config('domain.bet.point_count_max', 1_000);
         Log::info('bet.cart.add.build', [
-            'user_id' => auth()->id(),
+            'user_id' => $this->activeUserId(),
+            'is_proxy_mode' => $this->isProxyMode(),
             'race_id' => $race->id,
             'bet_type' => $betType,
             'mode' => $mode,
@@ -507,11 +581,12 @@ class BetFlowController extends Controller
                 ->withInput();
         }
 
-        $cartService->addItems($race->id, $items);
+        $cartService->addItems($race->id, $items, $this->activeUserId());
         $this->appendSnapshotGroup($race->id, $betType, $mode, $validated, $items);
         $savedCart = session($this->cartKey($race->id), ['items' => [], 'groups' => []]);
         Log::info('bet.cart.add.saved', [
-            'user_id' => auth()->id(),
+            'user_id' => $this->activeUserId(),
+            'is_proxy_mode' => $this->isProxyMode(),
             'race_id' => $race->id,
             'session_id' => session()->getId(),
             'saved_items_count' => count($savedCart['items'] ?? []),
@@ -523,6 +598,9 @@ class BetFlowController extends Controller
 
     public function selectType(Race $race)
     {
+        if ($response = $this->ensureBetActorSelected()) {
+            return $response;
+        }
         if ($response = $this->ensureRaceBettingOpen($race)) {
             return $response;
         }
@@ -560,6 +638,9 @@ class BetFlowController extends Controller
 
     public function selectMode(Race $race, string $betType)
     {
+        if ($response = $this->ensureBetActorSelected()) {
+            return $response;
+        }
         if ($response = $this->ensureRaceBettingOpen($race)) {
             return $response;
         }
@@ -582,6 +663,9 @@ class BetFlowController extends Controller
 
     public function buildByMode(Race $race, string $betType, string $mode)
     {
+        if ($response = $this->ensureBetActorSelected()) {
+            return $response;
+        }
         if ($response = $this->ensureRaceBettingOpen($race)) {
             return $response;
         }

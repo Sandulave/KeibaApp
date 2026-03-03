@@ -5,6 +5,11 @@
             <p class="mt-1 text-sm text-gray-500">
                 購入対象レース：{{ count($races) }}件
             </p>
+            @if (auth()->check() && auth()->user()->isAdmin() && (int) ($userId ?? 0) !== (int) auth()->id())
+                <p class="mt-1 text-sm text-amber-700">
+                    代理購入モード: ユーザーID {{ (int) ($userId ?? 0) }}
+                </p>
+            @endif
         </div>
 
         @if (session('success'))
@@ -79,7 +84,7 @@
                                             購入馬券詳細
                                         </span>
                                     @else
-                                        <a href="{{ route('stats.users.race-bets', [auth()->id(), $race->id]) }}"
+                                        <a href="{{ route('stats.users.race-bets', [(int) ($userId ?? auth()->id()), $race->id]) }}"
                                             class="inline-flex shrink-0 whitespace-nowrap items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition">
                                             購入馬券詳細
                                         </a>

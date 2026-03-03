@@ -417,4 +417,32 @@ class StatsFeatureTest extends TestCase
             'current_balance' => 91800,
         ]);
     }
+
+    public function test_destroy_adjustment_subtracts_existing_return_amount_from_current_balance(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'user',
+            'audience_role' => 'viewer',
+            'current_balance' => 4000,
+        ]);
+        $race = $this->createRace();
+
+        Bet::create([
+            'user_id' => $user->id,
+            'race_id' => $race->id,
+            'stake_amount' => 1000,
+            'return_amount' => 2500,
+            'hit_count' => 1,
+            'roi_percent' => 250,
+        ]);
+
+        $this->actingAs($user)->delete(route('stats.users.adjustments.destroy', $user), [
+            'race_id' => $race->id,
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'current_balance' => 2500,
+        ]);
+    }
 }

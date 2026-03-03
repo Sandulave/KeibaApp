@@ -1,12 +1,26 @@
 @php
+    $proxyUserId = (int) session('admin_proxy.user_id', 0);
+    $isAdmin = auth()->check() && auth()->user()->isAdmin();
+    $proxyBalanceUser = null;
+    if ($isAdmin && $proxyUserId > 0) {
+        $proxyBalanceUser = \App\Models\User::query()
+            ->select(['id', 'name', 'display_name', 'current_balance'])
+            ->find($proxyUserId);
+    }
+    $balanceDisplayUser = $proxyBalanceUser ?: auth()->user();
+    $balanceLabel = $proxyBalanceUser ? '代理入力中の残高' : '現在残高';
     $currentRaceId = session('bet.current_race_id');
+    $activeBetUserId = auth()->check() && $isAdmin && $proxyUserId > 0
+        ? $proxyUserId
+        : (int) auth()->id();
+    $currentCartKey = $currentRaceId ? "bet_cart_{$activeBetUserId}_{$currentRaceId}" : null;
     $cartCount = 0;
-    if ($currentRaceId) {
-        $currentCart = session("bet_cart_{$currentRaceId}", []);
+    if ($currentCartKey) {
+        $currentCart = session($currentCartKey, []);
         $cartCount = is_array($currentCart) ? count($currentCart['items'] ?? []) : 0;
     }
-    $isAdmin = auth()->check() && auth()->user()->isAdmin();
-    $raceSelectRoute = $isAdmin ? route('races.index') : route('bet.races');
+    $canOpenBetUi = auth()->check() && !$isAdmin;
+    $raceSelectRoute = $isAdmin && !$canOpenBetUi ? route('races.index') : route('bet.races');
     $isStatsPage = request()->routeIs('stats.index');
     $routeUser = request()->route('user');
     $routeUserId = $routeUser instanceof \App\Models\User ? (int) $routeUser->id : (int) $routeUser;
@@ -19,6 +33,7 @@
         || request()->routeIs('bet.build.mode');
     $isCartPage = request()->routeIs('bet.cart');
     $isMaintenancePage = request()->routeIs('admin.maintenance.*');
+    $isProxyEntryPage = request()->routeIs('admin.proxy-entry.*');
 @endphp
 
 <nav class="bg-gray-100">
@@ -33,9 +48,9 @@
                     <span class="font-medium">{{ auth()->user()->display_name ?: auth()->user()->name }}</span>
                 </div>
                 <div class="rounded-md border border-emerald-200 bg-emerald-50 px-2.5 sm:px-3 py-1.5 leading-tight whitespace-nowrap">
-                    <div class="text-[10px] sm:text-xs text-emerald-700">現在残高</div>
+                    <div class="text-[10px] sm:text-xs text-emerald-700">{{ $balanceLabel }}</div>
                     <div class="text-xs sm:text-base font-bold text-emerald-900">
-                        <span id="js-current-balance-amount">{{ number_format((int) (auth()->user()->current_balance ?? 0)) }}</span>
+                        <span id="js-current-balance-amount">{{ number_format((int) ($balanceDisplayUser?->current_balance ?? 0)) }}</span>
                         <span class="text-xs font-semibold">円</span>
                     </div>
                 </div>
@@ -49,27 +64,34 @@
                 </a>
 
                 @auth
+                    @if (! $isAdmin)
                     <a href="{{ route('stats.users.show', auth()->id()) }}"
                         class="text-xs sm:text-sm font-medium text-gray-700 hover:text-gray-900 transition {{ $isPersonalStatsPage ? 'underline underline-offset-4' : '' }}">
                         個人成績
                     </a>
+                    @endif
                 @endauth
 
-                @auth
+                @if ($canOpenBetUi)
                     <a href="{{ $raceSelectRoute }}"
                         class="text-xs sm:text-sm font-medium text-gray-700 hover:text-gray-900 transition {{ $isRaceSelectPage ? 'underline underline-offset-4' : '' }}">
                         馬券購入
                     </a>
-                @endauth
+                @endif
 
                 @if ($isAdmin)
+                    <a href="{{ route('admin.proxy-entry.edit') }}"
+                        class="text-xs sm:text-sm font-medium text-gray-700 hover:text-gray-900 transition {{ $isProxyEntryPage ? 'underline underline-offset-4' : '' }}">
+                        代理入力
+                    </a>
+
                     <a href="{{ route('admin.maintenance.edit') }}"
                         class="text-xs sm:text-sm font-medium text-gray-700 hover:text-gray-900 transition {{ $isMaintenancePage ? 'underline underline-offset-4' : '' }}">
                         メンテ設定
                     </a>
                 @endif
 
-                @if ($currentRaceId)
+                @if ($canOpenBetUi && $currentRaceId)
                     <a href="{{ route('bet.cart', $currentRaceId) }}"
                         class="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-800 transition {{ $isCartPage ? 'underline underline-offset-4' : '' }}">
                         カートを見る

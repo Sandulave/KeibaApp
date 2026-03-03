@@ -4,14 +4,18 @@ namespace App\Services\Bet;
 
 class CartService
 {
-    private function cartKey(int $raceId): string
+    private function cartKey(int $raceId, ?int $userId = null): string
     {
+        if ($userId !== null && $userId > 0) {
+            return "bet_cart_{$userId}_{$raceId}";
+        }
+
         return "bet_cart_{$raceId}";
     }
 
-    public function addItems(int $raceId, array $items): void
+    public function addItems(int $raceId, array $items, ?int $userId = null): void
     {
-        $cartKey = $this->cartKey($raceId);
+        $cartKey = $this->cartKey($raceId, $userId);
 
         $cart = session($cartKey, [
             'race_id' => $raceId,

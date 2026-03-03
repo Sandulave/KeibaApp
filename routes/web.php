@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\MaintenanceController;
+use App\Http\Controllers\Admin\ProxyEntryController;
 use App\Http\Controllers\AudienceRoleController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RaceController;
@@ -29,6 +30,11 @@ Route::middleware(['auth', 'role:group:admin'])->group(function () {
     Route::resource('races', RaceController::class);
     Route::get('/admin/maintenance', [MaintenanceController::class, 'edit'])->name('admin.maintenance.edit');
     Route::put('/admin/maintenance', [MaintenanceController::class, 'update'])->name('admin.maintenance.update');
+    Route::get('/admin/proxy-entry', [ProxyEntryController::class, 'edit'])->name('admin.proxy-entry.edit');
+    Route::post('/admin/proxy-entry/start-bet-ui', [ProxyEntryController::class, 'startBetUi'])->name('admin.proxy-entry.bet-ui.start');
+    Route::post('/admin/proxy-entry/stop-bet-ui', [ProxyEntryController::class, 'stopBetUi'])->name('admin.proxy-entry.bet-ui.stop');
+    Route::post('/admin/proxy-entry/adjustment', [ProxyEntryController::class, 'storeAdjustment'])->name('admin.proxy-entry.adjustment.store');
+    Route::delete('/admin/proxy-entry/race-data', [ProxyEntryController::class, 'destroyRaceData'])->name('admin.proxy-entry.race-data.destroy');
 
     Route::prefix('races/{race}')
         ->name('races.')

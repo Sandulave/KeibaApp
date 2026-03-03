@@ -675,6 +675,10 @@ class StatsController extends Controller
                 ->where('user_id', $user->id)
                 ->where('race_id', $raceId)
                 ->sum('stake_amount');
+            $returnTotal = (int) Bet::query()
+                ->where('user_id', $user->id)
+                ->where('race_id', $raceId)
+                ->sum('return_amount');
 
             $adjustment = RaceUserAdjustment::query()
                 ->where('user_id', $user->id)
@@ -701,6 +705,7 @@ class StatsController extends Controller
             if ($targetUser !== null) {
                 $targetUser->current_balance = (int) ($targetUser->current_balance ?? 0)
                     + $stakeTotal
+                    - $returnTotal
                     + $allowanceDelta
                     - $bonusPointsDelta;
                 $targetUser->save();

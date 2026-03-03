@@ -40,11 +40,11 @@
             </div>
             <div class="rounded-lg bg-white p-4 ring-1 ring-gray-200">
                 <div class="text-xs text-gray-500">総ボーナスPt</div>
-                <div class="mt-1 text-xl font-semibold">{{ number_format((int) ($bonusPoints ?? 0)) }}</div>
+                <div id="summaryBonusPoints" class="mt-1 text-xl font-semibold">{{ number_format((int) ($bonusPoints ?? 0)) }}</div>
             </div>
             <div class="rounded-lg bg-white p-4 ring-1 ring-gray-200">
                 <div class="text-xs text-gray-500">現在残高</div>
-                <div class="mt-1 text-xl font-semibold">{{ number_format((int) ($currentBalance ?? 0)) }}円</div>
+                <div id="summaryCurrentBalance" class="mt-1 text-xl font-semibold">{{ number_format((int) ($currentBalance ?? 0)) }}円</div>
             </div>
         </div>
 
@@ -237,6 +237,8 @@
                 const notice = document.getElementById('adjustmentNotice');
                 const initialSuccessMessage = @json(session('success'));
                 const currentBalanceEl = document.getElementById('js-current-balance-amount');
+                const summaryBonusPointsEl = document.getElementById('summaryBonusPoints');
+                const summaryCurrentBalanceEl = document.getElementById('summaryCurrentBalance');
                 const setNoticeVariant = (variant) => {
                     if (!notice) return;
                     notice.classList.remove('bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800');
@@ -259,6 +261,13 @@
                         .reduce((sum, el) => sum + toNumber(el.textContent), 0);
 
                     if (summaryReturnEl) summaryReturnEl.textContent = formatYen(returnTotal);
+                };
+
+                const refreshBonusSummary = () => {
+                    const bonusTotal = Array.from(document.querySelectorAll('input[name="bonus_points"]'))
+                        .reduce((sum, el) => sum + toNumber(el.value), 0);
+
+                    if (summaryBonusPointsEl) summaryBonusPointsEl.textContent = formatNum(bonusTotal);
                 };
 
                 document.querySelectorAll('.js-adjustment-save').forEach((button) => {
@@ -306,7 +315,11 @@
                             if (currentBalanceEl && payload && typeof payload.current_balance === 'number') {
                                 currentBalanceEl.textContent = payload.current_balance.toLocaleString('ja-JP');
                             }
+                            if (summaryCurrentBalanceEl && payload && typeof payload.current_balance === 'number') {
+                                summaryCurrentBalanceEl.textContent = formatYen(payload.current_balance);
+                            }
                             refreshSummary();
+                            refreshBonusSummary();
                             showNotice('保存しました');
                         } catch (err) {
                             alert('保存に失敗しました。入力値または権限を確認してください。');
@@ -320,6 +333,7 @@
                     const variant = initialSuccessMessage.includes('削除') ? 'danger' : 'success';
                     showNotice(initialSuccessMessage, variant);
                 }
+                refreshBonusSummary();
             })();
         </script>
     @elseif (session('success'))
