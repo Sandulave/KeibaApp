@@ -26,6 +26,28 @@
       padding-inline: 2rem;
     }
   }
+
+  /* スマホでは横スクロール領域のバーを見えやすくする */
+  @media (max-width: 639px) {
+    .overflow-x-auto {
+      scrollbar-width: auto;
+      scrollbar-color: #94a3b8 #e5e7eb;
+    }
+
+    .overflow-x-auto::-webkit-scrollbar {
+      height: 8px;
+    }
+
+    .overflow-x-auto::-webkit-scrollbar-thumb {
+      background: #94a3b8;
+      border-radius: 9999px;
+    }
+
+    .overflow-x-auto::-webkit-scrollbar-track {
+      background: #e5e7eb;
+      border-radius: 9999px;
+    }
+  }
 }
 
 @layer components {
