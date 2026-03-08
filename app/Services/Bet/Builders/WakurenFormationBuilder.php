@@ -3,9 +3,41 @@
 namespace App\Services\Bet\Builders;
 
 use App\Models\Race;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class WakurenFormationBuilder extends AbstractBetBuilder
 {
+    public function validate(Request $request, Race $race): array
+    {
+        $validator = Validator::make($request->all(), $this->rules($race), $this->messages());
+
+        $validator->after(function ($validator) use ($race) {
+            $data = $validator->getData();
+            $first = collect($data['first'] ?? [])
+                ->map(fn ($v) => (int) $v)
+                ->all();
+            $second = collect($data['second'] ?? [])
+                ->map(fn ($v) => (int) $v)
+                ->all();
+
+            $invalidSameFrames = collect(array_intersect($first, $second))
+                ->filter(fn ($frame) => !$this->canUseSameFramePair($race, (int) $frame))
+                ->values()
+                ->all();
+
+            if ($invalidSameFrames !== []) {
+                $labels = collect($invalidSameFrames)
+                    ->map(fn ($frame) => (string) $frame)
+                    ->all();
+                $pairLabels = collect($labels)->map(fn ($v) => "{$v}-{$v}")->implode(' / ');
+                $validator->errors()->add('second', "1頭のみの枠では同一枠は購入できません（{$pairLabels}）。");
+            }
+        });
+
+        return $validator->validate();
+    }
+
     public function rules(Race $race): array
     {
         $maxFrame = min(8, $this->maxHorse($race));
@@ -44,6 +76,9 @@ class WakurenFormationBuilder extends AbstractBetBuilder
         $set = [];
         foreach ($A as $a) {
             foreach ($B as $b) {
+                if ((int) $a === (int) $b && !$this->canUseSameFramePair($race, (int) $a)) {
+                    continue;
+                }
                 $key = $this->unordered2($a, $b);
                 $set[$key] = true;
             }

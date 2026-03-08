@@ -81,6 +81,12 @@
                 ->values()
                 ->all();
         }
+
+        $sameFrameAllowed = collect($availableFrames)
+            ->filter(fn($f) => ($frameCounts[$f] ?? 0) >= 2)
+            ->map(fn($f) => (string) $f)
+            ->values()
+            ->all();
     @endphp
 
     <style>
@@ -141,7 +147,7 @@
                 <div class="text-sm text-gray-600 leading-relaxed">
                     1列目×2列目から組み合わせを作ります。<br>
                     枠連は順不同なので、表示は <strong>昇順（1-2）</strong> に固定します。<br>
-                    ※同一枠（例：2-2）も発生し得るので、<strong>同一枠も生成</strong>します。
+                    同一枠（例：2-2）は、同枠に2頭以上いる場合のみ生成します。
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -151,7 +157,7 @@
                         <div class="flex items-end justify-between mb-2 gap-2">
                             <div>
                                 <div class="text-sm font-medium">選択</div>
-                                <div class="text-xs text-gray-500">各列1枠以上（同一枠 2-2 も生成）</div>
+                                <div class="text-xs text-gray-500">各列1枠以上（同一枠は2頭以上の枠のみ）</div>
                             </div>
 
                             <div class="flex gap-2 flex-wrap justify-end">
@@ -348,6 +354,7 @@
     <script>
         (() => {
             const MAX_COMBO_PREVIEW = {{ (int) $MAX_COMBO_PREVIEW }};
+            const sameFrameAllowed = new Set(@json($sameFrameAllowed));
 
             const grid = document.getElementById('frameGrid');
 
@@ -383,12 +390,14 @@
                 return Array.from(grid.querySelectorAll(`${sel}:checked`)).map(i => String(i.value));
             }
 
-            // ✅ 同一枠（2-2）も生成する（a===b を除外しない）
             function buildKeys(A, B) {
                 const set = new Set();
 
                 for (const a of A) {
                     for (const b of B) {
+                        if (a === b && !sameFrameAllowed.has(a)) {
+                            continue;
+                        }
                         const x = parseInt(a, 10) || 0;
                         const y = parseInt(b, 10) || 0;
                         const key = (x <= y) ? `${a}-${b}` : `${b}-${a}`;

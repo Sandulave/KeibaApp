@@ -107,6 +107,57 @@ abstract class AbstractBetBuilder implements BetBuilderInterface
     }
 
     /**
+     * 枠番ごとの頭数（1..8）を返す。
+     * 配分ロジックは購入画面側の表示と揃える。
+     *
+     * @return array<int, int>
+     */
+    protected function frameCounts(Race $race): array
+    {
+        $n = $this->maxHorse($race);
+        $counts = array_fill(1, 8, 0);
+
+        if ($n <= 8) {
+            for ($i = 0; $i < $n; $i++) {
+                $counts[$i + 1] = 1;
+            }
+            return $counts;
+        }
+
+        if ($n <= 15) {
+            for ($f = 1; $f <= 8; $f++) {
+                $counts[$f] = 1;
+            }
+
+            $extra = $n - 8;
+            for ($f = 8; $f >= 1 && $extra > 0; $f--) {
+                $counts[$f] += 1;
+                $extra--;
+            }
+
+            return $counts;
+        }
+
+        for ($f = 1; $f <= 8; $f++) {
+            $counts[$f] = 2;
+        }
+
+        $extra = $n - 16;
+        for ($f = 8; $f >= 1 && $extra > 0; $f--) {
+            $counts[$f] += 1;
+            $extra--;
+        }
+
+        return $counts;
+    }
+
+    protected function canUseSameFramePair(Race $race, int $frame): bool
+    {
+        $counts = $this->frameCounts($race);
+        return ($counts[$frame] ?? 0) >= 2;
+    }
+
+    /**
      * @param string $betType
      * @param array<int, string> $keys
      * @param int $amount

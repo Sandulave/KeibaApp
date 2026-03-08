@@ -77,6 +77,12 @@
                 ->values()
                 ->all();
         }
+
+        $sameFrameAllowed = collect($availableFrames)
+            ->filter(fn($f) => ($frameCounts[$f] ?? 0) >= 2)
+            ->map(fn($f) => (string) $f)
+            ->values()
+            ->all();
     @endphp
 
     <style>
@@ -137,7 +143,7 @@
                 <div class="text-sm text-gray-600 leading-relaxed">
                     軸1枠 × 相手枠。<br>
                     枠連は順不同なので、表示は <strong>昇順（1-2）</strong> に固定します。<br>
-                    ※同一枠（例：2-2）も発生し得るので、<strong>同一枠も生成</strong>します。
+                    同一枠（例：2-2）は、同枠に2頭以上いる場合のみ生成します。
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -309,6 +315,7 @@
     <script>
         (() => {
             const MAX_COMBO_PREVIEW = {{ (int) $MAX_COMBO_PREVIEW }};
+            const sameFrameAllowed = new Set(@json($sameFrameAllowed));
 
             const grid = document.getElementById('frameGrid');
 
@@ -344,12 +351,14 @@
                 return amount;
             }
 
-            // ✅ 同一枠（2-2）も生成 / 順不同なので昇順 "a-b" 固定
             function buildKeys(axis, others) {
                 if (!axis || others.length === 0) return [];
 
                 const set = new Set();
                 for (const o of others) {
+                    if (axis === o && !sameFrameAllowed.has(axis)) {
+                        continue;
+                    }
                     const a = parseInt(axis, 10) || 0;
                     const b = parseInt(o, 10) || 0;
                     const key = (a <= b) ? `${axis}-${o}` : `${o}-${axis}`;

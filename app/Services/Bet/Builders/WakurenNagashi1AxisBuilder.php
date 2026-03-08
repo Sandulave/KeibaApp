@@ -3,9 +3,30 @@
 namespace App\Services\Bet\Builders;
 
 use App\Models\Race;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class WakurenNagashi1AxisBuilder extends AbstractBetBuilder
 {
+    public function validate(Request $request, Race $race): array
+    {
+        $validator = Validator::make($request->all(), $this->rules($race), $this->messages());
+
+        $validator->after(function ($validator) use ($race) {
+            $data = $validator->getData();
+            $axis = (int) ($data['axis'] ?? 0);
+            $opponents = collect($data['opponents'] ?? [])
+                ->map(fn ($v) => (int) $v)
+                ->all();
+
+            if ($axis > 0 && in_array($axis, $opponents, true) && !$this->canUseSameFramePair($race, $axis)) {
+                $validator->errors()->add('opponents', "枠{$axis}は1頭のみのため同一枠（{$axis}-{$axis}）は購入できません。");
+            }
+        });
+
+        return $validator->validate();
+    }
+
     public function rules(Race $race): array
     {
         $maxFrame = min(8, $this->maxHorse($race));
@@ -44,6 +65,9 @@ class WakurenNagashi1AxisBuilder extends AbstractBetBuilder
 
         $keys = [];
         foreach ($opp as $b) {
+            if ((int) $axis === (int) $b && !$this->canUseSameFramePair($race, (int) $axis)) {
+                continue;
+            }
             $keys[] = $this->unordered2($axis, $b);
         }
 
