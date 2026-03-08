@@ -234,6 +234,19 @@ class StatsFeatureTest extends TestCase
         $this->get(route('stats.users.race-bets', [$owner, $race]))->assertOk();
     }
 
+    public function test_personal_stats_shows_race_row_when_race_has_horse_count_even_without_bets(): void
+    {
+        $owner = User::factory()->create(['role' => 'user']);
+        $viewer = User::factory()->create(['role' => 'user']);
+        $race = $this->createRace();
+
+        $response = $this->actingAs($viewer)->get(route('stats.users.show', $owner));
+
+        $response->assertOk();
+        $response->assertSee($race->name);
+        $response->assertDontSee('まだ購入データがありません。');
+    }
+
     public function test_guest_cannot_update_or_destroy_adjustment(): void
     {
         $owner = User::factory()->create(['role' => 'user']);

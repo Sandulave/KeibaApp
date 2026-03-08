@@ -298,10 +298,7 @@ class StatsController extends Controller
                 $join->on('rua.race_id', '=', 'races.id')
                     ->where('rua.user_id', '=', $user->id);
             })
-            ->where(function ($q) {
-                $q->whereNotNull('bets.id')
-                    ->orWhereNotNull('rua.challenge_choice');
-            })
+            ->where('races.horse_count', '>', 0)
             ->select([
                 'races.id as race_id',
                 'races.name as race_name',

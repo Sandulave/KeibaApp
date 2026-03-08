@@ -52,6 +52,13 @@
             <div class="px-6 py-4 border-b border-gray-200">
                 <h2 class="text-lg font-semibold">レース別成績</h2>
             </div>
+            @if ($canEditAdjustments)
+                <div class="border-b border-gray-200 bg-amber-50 px-6 py-3 text-xs text-amber-900">
+                    <span class="font-semibold">操作ガイド:</span>
+                    「保存」はその行のボーナスPt・勝負レースを反映、
+                    「入力リセット」はそのレースの馬券・ボーナスPt・勝負レースを初期化します（行は残ります）。
+                </div>
+            @endif
             <div class="overflow-x-auto">
                 <table class="min-w-[1080px] w-full table-fixed text-sm">
                     <colgroup>
@@ -102,7 +109,7 @@
                                 保存</th>
                             <th
                                 class="px-2 py-3 align-middle text-center text-xs font-medium text-gray-600 uppercase tracking-wider">
-                                削除</th>
+                                入力リセット</th>
                             <th
                                 class="px-2 py-3 align-middle text-center text-xs font-medium text-gray-600 uppercase tracking-wider">
                                 馬券詳細</th>
@@ -183,21 +190,21 @@
                                 <td class="px-2 py-3 align-middle text-center text-sm">
                                     @if ($canEditAdjustments)
                                         @if ((bool) $row->is_betting_closed)
-                                            <button type="button"
-                                                class="rounded bg-gray-300 px-2 py-1 text-xs text-white cursor-not-allowed"
-                                                disabled
-                                                title="投票終了レースは削除できません">
-                                                削除
-                                            </button>
-                                        @else
+                                                <button type="button"
+                                                    class="inline-flex items-center justify-center whitespace-nowrap rounded bg-gray-300 px-2 py-1 text-xs text-white cursor-not-allowed"
+                                                    disabled
+                                                    title="投票終了レースは入力リセットできません">
+                                                    入力リセット
+                                                </button>
+                                            @else
                                             <form method="POST" action="{{ route('stats.users.adjustments.destroy', $user) }}"
-                                                onsubmit="return confirm('このレースの馬券・ボーナスPTを削除します。よろしいですか？');">
+                                                onsubmit="return confirm('このレースの入力をリセットします。よろしいですか？');">
                                                 @csrf
                                                 @method('DELETE')
                                                 <input type="hidden" name="race_id" value="{{ $row->race_id }}">
                                                 <button type="submit"
-                                                    class="rounded bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700">
-                                                    削除
+                                                    class="inline-flex items-center justify-center whitespace-nowrap rounded bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700">
+                                                    入力リセット
                                                 </button>
                                             </form>
                                         @endif
