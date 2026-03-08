@@ -138,23 +138,27 @@ class BetHorseCountFeatureTest extends TestCase
         $this->assertSame(['2-2', '2-3'], collect($cart['items'])->pluck('selection_key')->values()->all());
     }
 
-    public function test_wakuren_nagashi_rejects_same_frame_pair_when_frame_has_only_one_horse(): void
+    public function test_wakuren_nagashi_skips_same_frame_pair_when_frame_has_only_one_horse(): void
     {
         $user = User::factory()->create(['role' => 'user']);
         $race = $this->createRace(12);
         $this->chooseNormalChallenge($user, $race);
 
-        $response = $this->actingAs($user)->from(route('bet.build.mode', [$race, 'wakuren', 'nagashi_1axis']))
+        $response = $this->actingAs($user)
             ->post(route('bet.cart.add', $race), [
                 'betType' => 'wakuren',
                 'mode' => 'nagashi_1axis',
                 'axis' => 1,
-                'opponents' => [1],
+                'opponents' => [1, 2, 3],
                 'amount' => 100,
             ]);
 
-        $response->assertRedirect(route('bet.build.mode', [$race, 'wakuren', 'nagashi_1axis']));
-        $response->assertSessionHasErrors(['opponents']);
+        $response->assertRedirect(route('bet.cart', $race));
+        $response->assertSessionHasNoErrors();
+
+        $cart = session("bet_cart_{$race->id}");
+        $this->assertNotNull($cart);
+        $this->assertSame(['1-2', '1-3'], collect($cart['items'])->pluck('selection_key')->values()->all());
     }
 
     public function test_umaren_box_allows_more_than_12_horses_when_race_has_enough_horses(): void
@@ -221,23 +225,30 @@ class BetHorseCountFeatureTest extends TestCase
         $this->assertSame(['2-2', '2-3'], collect($cart['items'])->pluck('selection_key')->values()->all());
     }
 
-    public function test_wakuren_formation_rejects_same_frame_pair_when_frame_has_only_one_horse(): void
+    public function test_wakuren_formation_skips_same_frame_pair_when_frame_has_only_one_horse(): void
     {
         $user = User::factory()->create(['role' => 'user']);
         $race = $this->createRace(12);
         $this->chooseNormalChallenge($user, $race);
 
-        $response = $this->actingAs($user)->from(route('bet.build.mode', [$race, 'wakuren', 'formation']))
+        $response = $this->actingAs($user)
             ->post(route('bet.cart.add', $race), [
                 'betType' => 'wakuren',
                 'mode' => 'formation',
-                'first' => [1],
-                'second' => [1],
+                'first' => [1, 2],
+                'second' => [1, 3],
                 'amount' => 100,
             ]);
 
-        $response->assertRedirect(route('bet.build.mode', [$race, 'wakuren', 'formation']));
-        $response->assertSessionHasErrors(['second']);
+        $response->assertRedirect(route('bet.cart', $race));
+        $response->assertSessionHasNoErrors();
+
+        $cart = session("bet_cart_{$race->id}");
+        $this->assertNotNull($cart);
+        $this->assertSame(
+            ['1-2', '1-3', '2-3'],
+            collect($cart['items'])->pluck('selection_key')->sort()->values()->all()
+        );
     }
 
     public function test_cart_items_are_sorted_by_bet_type_and_selection_key(): void
