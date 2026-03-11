@@ -47,6 +47,49 @@
       background: #e5e7eb;
       border-radius: 9999px;
     }
+
+    .mobile-scroll-fade-host {
+      position: relative;
+    }
+
+    .mobile-scroll-fade {
+      position: absolute;
+      inset-block: 0;
+      z-index: 10;
+      width: 3.5rem;
+      pointer-events: none;
+    }
+
+    .mobile-scroll-fade-left {
+      left: 0;
+      background: linear-gradient(to right, rgba(148, 163, 184, 0.85), rgba(203, 213, 225, 0.55), rgba(255, 255, 255, 0));
+    }
+
+    .mobile-scroll-fade-right {
+      right: 0;
+      background: linear-gradient(to left, rgba(148, 163, 184, 0.85), rgba(203, 213, 225, 0.55), rgba(255, 255, 255, 0));
+    }
+
+    .mobile-scroll-fade-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      border-radius: 9999px;
+      padding: 0.125rem 0.375rem;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1;
+      color: #fff;
+      background: rgba(51, 65, 85, 0.8);
+    }
+
+    .mobile-scroll-fade-left .mobile-scroll-fade-arrow {
+      left: 0.25rem;
+    }
+
+    .mobile-scroll-fade-right .mobile-scroll-fade-arrow {
+      right: 0.25rem;
+    }
   }
 }
 
