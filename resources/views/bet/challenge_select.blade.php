@@ -34,14 +34,14 @@
                     value="challenge"
                     class="w-full rounded-lg bg-amber-500 px-4 py-3 text-white font-semibold hover:bg-amber-600"
                     onclick="return confirm('このレースを勝負レースに設定しますか？');">
-                    勝負レースにする
+                    勝負レースにする（{{ number_format((int) ($race->challenge_allowance ?? 30000)) }}円）
                 </button>
 
                 <button type="submit"
                     name="challenge_choice"
                     value="normal"
                     class="w-full rounded-lg bg-gray-800 px-4 py-3 text-white font-semibold hover:bg-black">
-                    勝負レースにしない
+                    勝負レースにしない（{{ number_format((int) ($race->normal_allowance ?? 10000)) }}円）
                 </button>
             </form>
         </div>

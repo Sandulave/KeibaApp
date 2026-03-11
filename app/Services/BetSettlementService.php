@@ -114,7 +114,7 @@ class BetSettlementService
             ->keyBy('user_id');
 
         $adjustmentTotalsByUser = DB::table('race_user_adjustments')
-            ->selectRaw("user_id, COALESCE(SUM(bonus_points), 0) as total_bonus_points, COALESCE(SUM(CASE challenge_choice WHEN 'challenge' THEN 30000 WHEN 'normal' THEN 10000 ELSE 0 END), 0) as total_allowance")
+            ->selectRaw("user_id, COALESCE(SUM(bonus_points), 0) as total_bonus_points, COALESCE(SUM(COALESCE(granted_allowance, CASE challenge_choice WHEN 'challenge' THEN 30000 WHEN 'normal' THEN 10000 ELSE 0 END)), 0) as total_allowance")
             ->whereIn('user_id', $userIds)
             ->groupBy('user_id')
             ->get()

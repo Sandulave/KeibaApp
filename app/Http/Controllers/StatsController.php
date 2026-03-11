@@ -84,7 +84,7 @@ class StatsController extends Controller
                         DB::raw('COALESCE(SUM(bets.return_amount), 0) as total_return'),
                         DB::raw('COALESCE(SUM(bets.hit_count), 0) as total_hits'),
                         DB::raw('COALESCE(MAX(rua.bonus_points), 0) as bonus_points'),
-                        DB::raw('MAX(rua.challenge_choice) as challenge_choice'),
+                        DB::raw("COALESCE(MAX(COALESCE(rua.granted_allowance, CASE rua.challenge_choice WHEN 'challenge' THEN 30000 WHEN 'normal' THEN 10000 ELSE 0 END)), 0) as allowance_amount"),
                     ])
                     ->join('users', 'users.id', '=', 'bets.user_id')
                     ->leftJoin('race_user_adjustments as rua', function ($join) use ($selectedRaceId) {
@@ -124,7 +124,7 @@ class StatsController extends Controller
                         $betCount = (int)$row->bet_count;
                         $hitCount = (int)$row->total_hits;
                         $bonusPoints = (int)($row->bonus_points ?? 0);
-                        $allowanceAmount = $this->betMoneyService->allowanceForChoice($row->challenge_choice);
+                        $allowanceAmount = (int) ($row->allowance_amount ?? 0);
 
                         $row->roi_percent = $this->betMoneyService->roiPercent($stake, $return);
                         $row->hit_rate_percent = $betCount > 0
@@ -188,7 +188,7 @@ class StatsController extends Controller
                 ->select([
                     'user_id',
                     DB::raw('COALESCE(SUM(bonus_points), 0) as total_bonus_points'),
-                    DB::raw("COALESCE(SUM(CASE challenge_choice WHEN 'challenge' THEN 30000 WHEN 'normal' THEN 10000 ELSE 0 END), 0) as total_allowance_amount"),
+                    DB::raw("COALESCE(SUM(COALESCE(granted_allowance, CASE challenge_choice WHEN 'challenge' THEN 30000 WHEN 'normal' THEN 10000 ELSE 0 END)), 0) as total_allowance_amount"),
                 ])
                 ->groupBy('user_id')
                 ->get()
@@ -273,15 +273,7 @@ class StatsController extends Controller
             : null;
         $totalAllowance = (int) RaceUserAdjustment::query()
             ->where('user_id', $user->id)
-            ->selectRaw(
-                'COALESCE(SUM(CASE challenge_choice WHEN ? THEN ? WHEN ? THEN ? ELSE 0 END), 0) as total_allowance',
-                [
-                    'challenge',
-                    BetMoneyService::CHALLENGE_ALLOWANCE,
-                    'normal',
-                    BetMoneyService::NORMAL_ALLOWANCE,
-                ]
-            )
+            ->selectRaw("COALESCE(SUM(COALESCE(granted_allowance, CASE challenge_choice WHEN 'challenge' THEN 30000 WHEN 'normal' THEN 10000 ELSE 0 END)), 0) as total_allowance")
             ->value('total_allowance');
         $bonusPoints = (int)(RaceUserAdjustment::where('user_id', $user->id)->sum('bonus_points'));
         $totalAdjustment = $bonusPoints;
@@ -310,6 +302,7 @@ class StatsController extends Controller
                 DB::raw('COALESCE(SUM(bets.hit_count), 0) as total_hits'),
                 DB::raw('COALESCE(MAX(rua.bonus_points), 0) as bonus_points'),
                 DB::raw('MAX(rua.challenge_choice) as challenge_choice'),
+                DB::raw("COALESCE(MAX(COALESCE(rua.granted_allowance, CASE rua.challenge_choice WHEN 'challenge' THEN 30000 WHEN 'normal' THEN 10000 ELSE 0 END)), 0) as allowance_amount"),
             ])
             ->groupBy('races.id', 'races.name', 'races.race_date', 'races.is_betting_closed')
             ->orderBy('races.race_date')
@@ -376,6 +369,10 @@ class StatsController extends Controller
 
         DB::transaction(function () use ($validated, $user) {
             $raceId = (int) $validated['race_id'];
+            $race = Race::query()
+                ->whereKey($raceId)
+                ->lockForUpdate()
+                ->firstOrFail();
             $updateValues = [
                 'bonus_points' => (int) $validated['bonus_points'],
                 'note' => $validated['note'] ?? null,
@@ -386,13 +383,18 @@ class StatsController extends Controller
                 ->where('race_id', $raceId)
                 ->lockForUpdate()
                 ->first();
-            $oldChoice = $existingAdjustment?->challenge_choice;
+            $oldGrantedAllowance = $existingAdjustment === null
+                ? 0
+                : ($existingAdjustment->granted_allowance !== null
+                    ? (int) $existingAdjustment->granted_allowance
+                    : $this->betMoneyService->allowanceForChoice($existingAdjustment->challenge_choice));
             $oldBonusPoints = (int) ($existingAdjustment?->bonus_points ?? 0);
 
             if (array_key_exists('challenge_choice', $validated)) {
                 $updateValues['challenge_choice'] = $validated['challenge_choice'] !== null && $validated['challenge_choice'] !== ''
                     ? (string) $validated['challenge_choice']
                     : null;
+                $updateValues['granted_allowance'] = $this->betMoneyService->allowanceForRaceChoice($race, $updateValues['challenge_choice']);
                 $updateValues['challenge_chosen_at'] = $updateValues['challenge_choice'] !== null ? now() : null;
             }
 
@@ -404,8 +406,7 @@ class StatsController extends Controller
                 $updateValues
             );
 
-            $newChoice = $updatedAdjustment->challenge_choice;
-            $choiceDelta = $this->betMoneyService->challengeChoiceDelta($oldChoice, $newChoice);
+            $choiceDelta = (int) ($updatedAdjustment->granted_allowance ?? 0) - $oldGrantedAllowance;
             $newBonusPoints = (int) ($updatedAdjustment->bonus_points ?? 0);
             $bonusDelta = $newBonusPoints - $oldBonusPoints;
             $delta = $choiceDelta + $bonusDelta;
@@ -683,8 +684,13 @@ class StatsController extends Controller
                 ->lockForUpdate()
                 ->first();
             $bonusPointsDelta = (int) ($adjustment?->bonus_points ?? 0);
-            $challengeChoice = $adjustment?->challenge_choice;
-            $allowanceDelta = -$this->betMoneyService->allowanceForChoice($challengeChoice);
+            $allowanceDelta = $adjustment === null
+                ? 0
+                : -(
+                    $adjustment->granted_allowance !== null
+                        ? (int) $adjustment->granted_allowance
+                        : $this->betMoneyService->allowanceForChoice($adjustment->challenge_choice)
+                );
 
             Bet::query()
                 ->where('user_id', $user->id)
@@ -694,6 +700,7 @@ class StatsController extends Controller
             if ($adjustment !== null) {
                 $adjustment->bonus_points = 0;
                 $adjustment->challenge_choice = null;
+                $adjustment->granted_allowance = 0;
                 $adjustment->challenge_chosen_at = null;
                 $adjustment->note = null;
                 $adjustment->save();

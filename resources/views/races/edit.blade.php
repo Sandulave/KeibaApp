@@ -20,6 +20,18 @@
         </div>
 
         {{-- エラー表示 --}}
+        @if (session('success'))
+            <div class="mb-6 rounded-lg bg-green-50 p-4 ring-1 ring-green-200">
+                <p class="text-sm text-green-800">{{ session('success') }}</p>
+            </div>
+        @endif
+
+        @if (session('error'))
+            <div class="mb-6 rounded-lg bg-red-50 p-4 ring-1 ring-red-200">
+                <p class="text-sm text-red-800">{{ session('error') }}</p>
+            </div>
+        @endif
+
         @if ($errors->any())
             <div class="mb-6 rounded-lg bg-red-50 p-4 ring-1 ring-red-200">
                 <h3 class="text-sm font-medium text-red-800 mb-2">エラーが発生しました</h3>
@@ -87,6 +99,41 @@
                 @error('horse_count')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
+            </div>
+
+            <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                    <label for="normal_allowance" class="block text-sm font-medium text-gray-900">
+                        通常配布金額
+                    </label>
+                    <input
+                        type="number"
+                        id="normal_allowance"
+                        name="normal_allowance"
+                        value="{{ old('normal_allowance', (int) ($race->normal_allowance ?? 10000)) }}"
+                        min="0"
+                        step="100"
+                        class="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500">
+                    @error('normal_allowance')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label for="challenge_allowance" class="block text-sm font-medium text-gray-900">
+                        勝負配布金額
+                    </label>
+                    <input
+                        type="number"
+                        id="challenge_allowance"
+                        name="challenge_allowance"
+                        value="{{ old('challenge_allowance', (int) ($race->challenge_allowance ?? 30000)) }}"
+                        min="0"
+                        step="100"
+                        class="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500">
+                    @error('challenge_allowance')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
             </div>
 
             <div class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
@@ -160,6 +207,21 @@
                 </label>
             </div>
 
+            <div class="mb-8 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <p class="text-sm font-medium text-amber-900">既選択ユーザーへの配布金額再適用</p>
+                <p class="mt-1 text-xs text-amber-800">
+                    勝負レース選択済みユーザーの付与金額を、現在のレース設定金額に合わせて再計算します。差分は残高へ反映されます。
+                </p>
+                <div class="mt-3">
+                    <button
+                        type="button"
+                        class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
+                        onclick="if (confirm('既選択ユーザーの配布金額を再適用します。よろしいですか？')) { document.getElementById('reapplyNormalAllowance').value = document.getElementById('normal_allowance').value; document.getElementById('reapplyChallengeAllowance').value = document.getElementById('challenge_allowance').value; document.getElementById('reapplyAllowancesForm').submit(); }">
+                        配布金額を再適用
+                    </button>
+                </div>
+            </div>
+
             {{-- ボタン --}}
             <div class="flex gap-3">
                 <button
@@ -173,6 +235,12 @@
                     キャンセル
                 </a>
             </div>
+        </form>
+
+        <form id="reapplyAllowancesForm" method="POST" action="{{ route('races.allowances.reapply', $race) }}">
+            @csrf
+            <input type="hidden" id="reapplyNormalAllowance" name="normal_allowance" value="">
+            <input type="hidden" id="reapplyChallengeAllowance" name="challenge_allowance" value="">
         </form>
     </div>
 

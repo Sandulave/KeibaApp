@@ -10,6 +10,8 @@ class Race extends Model
     protected $fillable = [
         'name',
         'horse_count',
+        'normal_allowance',
+        'challenge_allowance',
         'race_date',
         'course',
         'is_betting_closed',
@@ -17,6 +19,8 @@ class Race extends Model
 
     protected $casts = [
         'is_betting_closed' => 'boolean',
+        'normal_allowance' => 'integer',
+        'challenge_allowance' => 'integer',
     ];
 
     // result, resultsリレーション削除

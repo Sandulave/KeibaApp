@@ -2,6 +2,8 @@
 
 namespace App\Services\Finance;
 
+use App\Models\Race;
+
 class BetMoneyService
 {
     public const NORMAL_ALLOWANCE = 10_000;
@@ -12,6 +14,15 @@ class BetMoneyService
         return match ($choice) {
             'challenge' => self::CHALLENGE_ALLOWANCE,
             'normal' => self::NORMAL_ALLOWANCE,
+            default => 0,
+        };
+    }
+
+    public function allowanceForRaceChoice(Race $race, ?string $choice): int
+    {
+        return match ($choice) {
+            'challenge' => (int) ($race->challenge_allowance ?? self::CHALLENGE_ALLOWANCE),
+            'normal' => (int) ($race->normal_allowance ?? self::NORMAL_ALLOWANCE),
             default => 0,
         };
     }
@@ -35,4 +46,3 @@ class BetMoneyService
         return $returnAmount - $stakeAmount + $bonusPoints;
     }
 }
-

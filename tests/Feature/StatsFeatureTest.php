@@ -458,4 +458,39 @@ class StatsFeatureTest extends TestCase
             'current_balance' => 2500,
         ]);
     }
+
+    public function test_destroy_adjustment_subtracts_granted_allowance_amount_from_current_balance(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'user',
+            'audience_role' => 'viewer',
+            'current_balance' => 50000,
+        ]);
+        $race = Race::create([
+            'name' => '配布差戻しテスト',
+            'race_date' => '2026-02-23',
+            'course' => '東京',
+            'horse_count' => 18,
+            'normal_allowance' => 12000,
+            'challenge_allowance' => 25000,
+        ]);
+
+        RaceUserAdjustment::create([
+            'user_id' => $user->id,
+            'race_id' => $race->id,
+            'bonus_points' => 0,
+            'challenge_choice' => 'challenge',
+            'granted_allowance' => 25000,
+            'challenge_chosen_at' => now(),
+        ]);
+
+        $this->actingAs($user)->delete(route('stats.users.adjustments.destroy', $user), [
+            'race_id' => $race->id,
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'current_balance' => 25000,
+        ]);
+    }
 }

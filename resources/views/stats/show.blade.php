@@ -55,8 +55,8 @@
             @if ($canEditAdjustments)
                 <div class="border-b border-gray-200 bg-amber-50 px-6 py-3 text-xs text-amber-900">
                     <span class="font-semibold">操作ガイド:</span>
-                    「保存」はその行のボーナスPt・勝負レースを反映、
-                    「入力リセット」はそのレースの馬券・ボーナスPt・勝負レースを初期化します（行は残ります）。
+                    「保存」はその行のボーナスPtを反映します。
+                    「入力リセット」はそのレースの馬券・ボーナスPt・勝負レース設定を初期化し、配布金額も差し戻します（行は残ります）。
                 </div>
             @endif
             <div class="overflow-x-auto">
@@ -124,11 +124,7 @@
                                     {{ $row->race_name }}</td>
                                 <td class="px-2 py-4 align-middle text-right text-gray-700">
                                     @php
-                                        $allowanceAmount = match ($row->challenge_choice ?? null) {
-                                            'challenge' => 30000,
-                                            'normal' => 10000,
-                                            default => 0,
-                                        };
+                                        $allowanceAmount = (int) ($row->allowance_amount ?? 0);
                                     @endphp
                                     <span data-display="allowance">{{ number_format($allowanceAmount) }}</span>円
                                 </td>

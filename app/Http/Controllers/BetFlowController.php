@@ -200,10 +200,11 @@ class BetFlowController extends Controller
                     ->whereKey($userId)
                     ->lockForUpdate()
                     ->firstOrFail();
-                $allowance = $betMoneyService->allowanceForChoice($choice);
+                $allowance = $betMoneyService->allowanceForRaceChoice($race, $choice);
 
                 $adjustment->bonus_points = (int) ($adjustment->bonus_points ?? 0);
                 $adjustment->challenge_choice = $choice;
+                $adjustment->granted_allowance = $allowance;
                 $adjustment->challenge_chosen_at = now();
                 $adjustment->save();
 

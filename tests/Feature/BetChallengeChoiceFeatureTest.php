@@ -21,6 +21,18 @@ class BetChallengeChoiceFeatureTest extends TestCase
         ]);
     }
 
+    private function createRaceWithAllowances(int $normalAllowance, int $challengeAllowance): Race
+    {
+        return Race::create([
+            'name' => '配布金額テスト',
+            'race_date' => '2026-05-11',
+            'course' => '東京',
+            'horse_count' => 18,
+            'normal_allowance' => $normalAllowance,
+            'challenge_allowance' => $challengeAllowance,
+        ]);
+    }
+
     public function test_unselected_user_is_redirected_to_challenge_select_from_types(): void
     {
         $user = User::factory()->create(['role' => 'user']);
@@ -83,6 +95,29 @@ class BetChallengeChoiceFeatureTest extends TestCase
         $this->assertDatabaseHas('users', [
             'id' => $user->id,
             'current_balance' => 11500,
+        ]);
+    }
+
+    public function test_challenge_choice_uses_race_allowance_amount(): void
+    {
+        $user = User::factory()->create(['role' => 'user', 'current_balance' => 1000]);
+        $race = $this->createRaceWithAllowances(12000, 42000);
+
+        $this->actingAs($user)
+            ->post(route('bet.challenge.store', $race), [
+                'challenge_choice' => 'challenge',
+            ])
+            ->assertRedirect(route('bet.types', $race));
+
+        $this->assertDatabaseHas('race_user_adjustments', [
+            'user_id' => $user->id,
+            'race_id' => $race->id,
+            'challenge_choice' => 'challenge',
+            'granted_allowance' => 42000,
+        ]);
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'current_balance' => 43000,
         ]);
     }
 }

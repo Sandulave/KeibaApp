@@ -28,6 +28,7 @@ Route::get('/dashboard', function () {
 // 管理者だけ：レース管理
 Route::middleware(['auth', 'role:group:admin'])->group(function () {
     Route::resource('races', RaceController::class);
+    Route::post('/races/{race}/allowances/reapply', [RaceController::class, 'reapplyAllowances'])->name('races.allowances.reapply');
     Route::get('/admin/maintenance', [MaintenanceController::class, 'edit'])->name('admin.maintenance.edit');
     Route::put('/admin/maintenance', [MaintenanceController::class, 'update'])->name('admin.maintenance.update');
     Route::get('/admin/proxy-entry', [ProxyEntryController::class, 'edit'])->name('admin.proxy-entry.edit');
