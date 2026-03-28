@@ -125,6 +125,16 @@
                             <div class="text-[11px] text-gray-500">
                                 購入日時: {{ optional($bet->bought_at)->format('Y-m-d H:i:s') ?? '-' }}
                             </div>
+                            <div class="mt-2">
+                                <button
+                                    type="button"
+                                    class="js-copy-snapshot inline-flex items-center rounded border border-gray-300 bg-white px-2 py-1 text-[11px] font-semibold text-gray-700 transition hover:bg-gray-100"
+                                    data-copy-text="{{ $bet->snapshot_text }}"
+                                    data-default-label="買い目をコピー"
+                                >
+                                    買い目をコピー
+                                </button>
+                            </div>
                             <div class="mt-1 whitespace-pre-line font-mono text-xs leading-5 text-gray-900">{{ $bet->snapshot_text }}</div>
                         </div>
                     @endforeach
@@ -198,4 +208,36 @@
             </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const copyButtons = document.querySelectorAll('.js-copy-snapshot');
+
+            const setButtonLabel = (button, label) => {
+                button.textContent = label;
+            };
+
+            copyButtons.forEach((button) => {
+                let resetTimerId;
+
+                button.addEventListener('click', async () => {
+                    const text = button.dataset.copyText ?? '';
+                    const defaultLabel = button.dataset.defaultLabel ?? 'コピー';
+
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        setButtonLabel(button, 'コピー済み');
+                    } catch (error) {
+                        setButtonLabel(button, '失敗');
+                        return;
+                    }
+
+                    clearTimeout(resetTimerId);
+                    resetTimerId = window.setTimeout(() => {
+                        setButtonLabel(button, defaultLabel);
+                    }, 1500);
+                });
+            });
+        });
+    </script>
 </x-app-layout>
