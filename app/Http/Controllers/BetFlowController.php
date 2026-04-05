@@ -489,7 +489,15 @@ class BetFlowController extends Controller
                 }
             }
 
+            $removedItems = collect($cart['items'])
+                ->filter(fn ($row) => (int) ($row['amount'] ?? 0) === 0)
+                ->map(fn (array $row) => $this->buildRemovedItemLog($row, 'commit_update_amount_zero'))
+                ->filter()
+                ->values()
+                ->all();
+
             $cart['items'] = array_values(array_filter($cart['items'], fn ($row) => (int) $row['amount'] > 0));
+            $cart['removed_items'] = array_values(array_merge($cart['removed_items'] ?? [], $removedItems));
             session([$cartKey => $cart]);
 
             if (empty($cart['items'])) {
@@ -731,50 +739,8 @@ class BetFlowController extends Controller
 
     private function buildSnapshotFromCart(array $cart): array
     {
-        $cartItems = collect($cart['items'] ?? [])
-            ->map(function (array $row) {
-                $betType = (string) ($row['bet_type'] ?? '');
-                $selectionKey = (string) ($row['selection_key'] ?? '');
-
-                return [
-                    'key' => $this->itemKey($betType, $selectionKey),
-                    'bet_type' => $betType,
-                    'selection_key' => $selectionKey,
-                    'amount' => (int) ($row['amount'] ?? 0),
-                ];
-            })
-            ->filter(fn (array $row) => $row['bet_type'] !== '' && $row['selection_key'] !== '')
-            ->values();
-
-        $itemsByKey = $cartItems->keyBy('key');
-
         $groups = collect($cart['groups'] ?? [])
-            ->map(function (array $group) use ($itemsByKey) {
-                $itemKeys = collect($group['item_keys'] ?? [])
-                    ->map(fn ($key) => (string) $key)
-                    ->filter()
-                    ->unique()
-                    ->values();
-
-                // 追加時に保持した item_keys を使って、現在カートの実体に追従させる。
-                // これにより、一部削除後でも point_count / total_amount がズレない。
-                if ($itemKeys->isNotEmpty()) {
-                    $groupItems = $itemKeys
-                        ->map(fn (string $key) => $itemsByKey->get($key))
-                        ->filter()
-                        ->values()
-                        ->all();
-
-                    return [
-                        'bet_type' => (string) ($group['bet_type'] ?? ''),
-                        'mode' => (string) ($group['mode'] ?? ''),
-                        'input' => is_array($group['input'] ?? null) ? $group['input'] : [],
-                        'point_count' => count($groupItems),
-                        'unit_amount' => $this->detectUnitAmount($groupItems),
-                        'total_amount' => (int) collect($groupItems)->sum(fn (array $row) => (int) ($row['amount'] ?? 0)),
-                    ];
-                }
-
+            ->map(function (array $group) {
                 return [
                     'bet_type' => (string) ($group['bet_type'] ?? ''),
                     'mode' => (string) ($group['mode'] ?? ''),
