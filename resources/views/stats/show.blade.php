@@ -20,7 +20,7 @@
             </div>
         @endif
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
             <div class="rounded-lg bg-white p-4 ring-1 ring-gray-200">
                 <div class="text-xs text-gray-500">総投資額</div>
                 <div class="mt-1 text-xl font-semibold">{{ number_format($totalStake) }}円</div>
@@ -45,6 +45,15 @@
             <div class="rounded-lg bg-white p-4 ring-1 ring-gray-200">
                 <div class="text-xs text-gray-500">現在残高</div>
                 <div id="summaryCurrentBalance" class="mt-1 text-xl font-semibold">{{ number_format((int) ($currentBalance ?? 0)) }}円</div>
+            </div>
+        </div>
+
+        <div class="mb-8 mt-4 max-w-sm">
+            <div class="rounded-lg bg-white p-4 ring-1 ring-gray-200">
+                <div class="text-xs text-gray-500">勝負レース回数</div>
+                <div class="mt-1 text-xl font-semibold">
+                    {{ number_format((int) ($challengeRaceCount ?? 0)) }}回 / {{ number_format((int) ($challengeRaceLimit ?? 3)) }}回
+                </div>
             </div>
         </div>
 

@@ -234,6 +234,53 @@ class StatsFeatureTest extends TestCase
         $this->get(route('stats.users.race-bets', [$owner, $race]))->assertOk();
     }
 
+    public function test_personal_stats_displays_challenge_race_count(): void
+    {
+        $owner = User::factory()->create(['role' => 'user']);
+        $viewer = User::factory()->create(['role' => 'user']);
+        $raceA = $this->createRace();
+        $raceB = Race::create([
+            'name' => '第2レース',
+            'race_date' => '2026-04-06',
+            'course' => '阪神',
+            'horse_count' => 18,
+        ]);
+        $raceC = Race::create([
+            'name' => '第3レース',
+            'race_date' => '2026-04-07',
+            'course' => '中山',
+            'horse_count' => 18,
+        ]);
+
+        RaceUserAdjustment::create([
+            'user_id' => $owner->id,
+            'race_id' => $raceA->id,
+            'bonus_points' => 0,
+            'challenge_choice' => 'challenge',
+            'challenge_chosen_at' => now(),
+        ]);
+        RaceUserAdjustment::create([
+            'user_id' => $owner->id,
+            'race_id' => $raceB->id,
+            'bonus_points' => 0,
+            'challenge_choice' => 'challenge',
+            'challenge_chosen_at' => now(),
+        ]);
+        RaceUserAdjustment::create([
+            'user_id' => $owner->id,
+            'race_id' => $raceC->id,
+            'bonus_points' => 0,
+            'challenge_choice' => 'normal',
+            'challenge_chosen_at' => now(),
+        ]);
+
+        $response = $this->actingAs($viewer)->get(route('stats.users.show', $owner));
+
+        $response->assertOk();
+        $response->assertSee('勝負レース回数');
+        $response->assertSee('2回 / 3回');
+    }
+
     public function test_personal_stats_shows_race_row_when_race_has_horse_count_even_without_bets(): void
     {
         $owner = User::factory()->create(['role' => 'user']);

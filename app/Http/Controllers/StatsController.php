@@ -275,6 +275,11 @@ class StatsController extends Controller
             ->where('user_id', $user->id)
             ->selectRaw("COALESCE(SUM(COALESCE(granted_allowance, CASE challenge_choice WHEN 'challenge' THEN 30000 WHEN 'normal' THEN 10000 ELSE 0 END)), 0) as total_allowance")
             ->value('total_allowance');
+        $challengeRaceCount = (int) RaceUserAdjustment::query()
+            ->where('user_id', $user->id)
+            ->where('challenge_choice', 'challenge')
+            ->count();
+        $challengeRaceLimit = (int) config('domain.stats.challenge_race_limit', 3);
         $bonusPoints = (int)(RaceUserAdjustment::where('user_id', $user->id)->sum('bonus_points'));
         $totalAdjustment = $bonusPoints;
         $totalScore = $totalStake > 0
@@ -333,6 +338,8 @@ class StatsController extends Controller
             'totalReturn' => $totalReturn,
             'overallRoi' => $overallRoi,
             'totalAllowance' => $totalAllowance,
+            'challengeRaceCount' => $challengeRaceCount,
+            'challengeRaceLimit' => $challengeRaceLimit,
             'bonusPoints' => $bonusPoints,
             'currentBalance' => (int) ($user->current_balance ?? 0),
             'totalAdjustment' => $totalAdjustment,

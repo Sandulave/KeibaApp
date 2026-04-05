@@ -43,5 +43,6 @@ return [
 
     'stats' => [
         'adjustment_max' => 1_000_000,
+        'challenge_race_limit' => 3,
     ],
 ];
