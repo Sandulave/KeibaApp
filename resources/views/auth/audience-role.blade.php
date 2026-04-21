@@ -26,7 +26,7 @@
                         >
                         <span>
                             <span class="block font-medium text-rose-900">配信者</span>
-                            <span class="block text-sm text-rose-800">配信を行う側の参加者はこちらを選択してください。</span>
+                            <span class="block text-sm text-rose-800">いぬマミヤの企画に配信者として参加し、配信を行う方はこちらを選択してください。</span>
                         </span>
                     </label>
 
@@ -40,7 +40,7 @@
                         >
                         <span>
                             <span class="block font-medium text-sky-900">視聴者</span>
-                            <span class="block text-sm text-sky-800">配信を視聴して参加する側はこちらを選択してください。</span>
+                            <span class="block text-sm text-sky-800">成績入力のみを行う方はこちらを選択してください。</span>
                         </span>
                     </label>
 
