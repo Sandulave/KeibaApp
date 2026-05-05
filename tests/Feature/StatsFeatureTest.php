@@ -184,6 +184,20 @@ class StatsFeatureTest extends TestCase
             'return_amount' => 0,
             'hit_count' => 0,
             'roi_percent' => 0,
+            'build_snapshot' => [
+                'groups' => [
+                    [
+                        'bet_type' => 'sanrenpuku',
+                        'mode' => 'box',
+                        'input' => [
+                            'selection_keys' => ['1-2-3'],
+                        ],
+                        'point_count' => 1,
+                        'unit_amount' => 1200,
+                        'total_amount' => 1200,
+                    ],
+                ],
+            ],
         ]);
 
         BetItem::create([
@@ -205,6 +219,8 @@ class StatsFeatureTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('馬券詳細');
+        $response->assertSee('すべての買い目をコピー');
+        $response->assertSee('■ 三連複 ボックス');
         $response->assertSee('1-2-3');
         $response->assertSee('三連複');
     }

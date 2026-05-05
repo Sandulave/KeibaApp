@@ -115,9 +115,22 @@
 
         @php
             $snapshotBets = $bets->filter(fn($bet) => filled($bet->snapshot_text))->values();
+            $allSnapshotText = $snapshotBets->pluck('snapshot_text')->implode("\n\n");
         @endphp
         <div class="rounded-lg bg-white p-3 ring-1 ring-gray-200">
-            <h2 class="text-xs font-semibold text-gray-900">購入内容（入力ベース）</h2>
+            <div class="flex flex-wrap items-center gap-2">
+                <h2 class="text-xs font-semibold text-gray-900">購入内容（入力ベース）</h2>
+                @if ($snapshotBets->isNotEmpty())
+                    <button
+                        type="button"
+                        class="js-copy-snapshot inline-flex items-center rounded border border-gray-300 bg-white px-2 py-1 text-[11px] font-semibold text-gray-700 transition hover:bg-gray-100"
+                        data-copy-text="{{ $allSnapshotText }}"
+                        data-default-label="すべての買い目をコピー"
+                    >
+                        すべての買い目をコピー
+                    </button>
+                @endif
+            </div>
             @if ($snapshotBets->isNotEmpty())
                 <div class="mt-2 space-y-2">
                     @foreach ($snapshotBets as $bet)
