@@ -119,6 +119,67 @@ class RaceSettlementFeatureTest extends TestCase
         ]);
     }
 
+    public function test_admin_can_import_settlement_json(): void
+    {
+        $admin = $this->adminUser();
+        $race = $this->createRace();
+
+        $payload = [
+            'ranks' => [
+                1 => [4],
+                2 => [1],
+                3 => [2],
+            ],
+            'withdrawals' => [18],
+            'payouts' => [
+                'tansho' => [
+                    ['selection_key' => '4', 'payout_per_100' => 340, 'popularity' => 2],
+                ],
+                'umaren' => [
+                    ['selection_key' => '1-2', 'payout_per_100' => 890, 'popularity' => 3],
+                ],
+            ],
+        ];
+
+        $this->actingAs($admin)
+            ->post(route('races.settlement.import-json', $race), [
+                'settlement_json' => json_encode($payload),
+            ])
+            ->assertRedirect(route('races.settlement.edit', $race))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('race_results', [
+            'race_id' => $race->id,
+            'rank' => 1,
+            'horse_no' => '4',
+        ]);
+        $this->assertDatabaseHas('race_withdrawals', [
+            'race_id' => $race->id,
+            'horse_no' => '18',
+        ]);
+        $this->assertDatabaseHas('race_payouts', [
+            'race_id' => $race->id,
+            'bet_type' => 'umaren',
+            'selection_key' => '1-2',
+            'payout_per_100' => 890,
+            'popularity' => 3,
+        ]);
+    }
+
+    public function test_settlement_json_import_rejects_invalid_json(): void
+    {
+        $admin = $this->adminUser();
+        $race = $this->createRace();
+
+        $this->actingAs($admin)
+            ->from(route('races.settlement.edit', $race))
+            ->post(route('races.settlement.import-json', $race), [
+                'settlement_json' => '{"ranks":',
+            ])
+            ->assertRedirect(route('races.settlement.edit', $race))
+            ->assertSessionHasErrors('settlement_json');
+    }
+
     public function test_validation_rejects_duplicate_rank_and_invalid_payout(): void
     {
         $admin = $this->adminUser();

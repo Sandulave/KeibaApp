@@ -15,7 +15,11 @@ class RaceSettlementRequest extends FormRequest
 
     public function rules(): array
     {
-        $race = $this->route('race');
+        return self::rulesForRace($this->route('race'));
+    }
+
+    public static function rulesForRace(?Race $race): array
+    {
         $horseMax = $race instanceof Race
             ? (int) $race->horse_count
             : (int) config('domain.bet.default_horse_count', 18);
@@ -42,8 +46,13 @@ class RaceSettlementRequest extends FormRequest
 
     public function withValidator($validator)
     {
-        $validator->after(function ($v) {
-            $ranks = $this->input('ranks', []);
+        self::addAfterValidation($validator, $this->all());
+    }
+
+    public static function addAfterValidation($validator, array $input): void
+    {
+        $validator->after(function ($v) use ($input) {
+            $ranks = $input['ranks'] ?? [];
             $all = collect($ranks[1] ?? [])
                 ->merge($ranks[2] ?? [])
                 ->merge($ranks[3] ?? []);
@@ -56,7 +65,7 @@ class RaceSettlementRequest extends FormRequest
                 }
             }
 
-            $payouts = $this->input('payouts', []);
+            $payouts = $input['payouts'] ?? [];
             foreach ($payouts as $betType => $rows) {
                 if (!BetType::tryFrom((string)$betType)) {
                     $v->errors()->add('payouts', "未対応の券種です: {$betType}");
@@ -93,6 +102,11 @@ class RaceSettlementRequest extends FormRequest
     }
 
     public function messages(): array
+    {
+        return self::messagesForSettlement();
+    }
+
+    public static function messagesForSettlement(): array
     {
         return [
             'ranks.required' => '着順データがありません。',

@@ -26,6 +26,36 @@
             </div>
         @endif
 
+        <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 p-4">
+            <h2 class="font-semibold">JSON一括登録</h2>
+            <form method="POST" action="{{ route('races.settlement.import-json', $race) }}" class="mt-3 space-y-3">
+                @csrf
+                <textarea
+                    name="settlement_json"
+                    rows="12"
+                    class="block w-full rounded border-gray-300 font-mono text-sm"
+                    placeholder='{
+  "ranks": {"1": [4], "2": [1], "3": [2]},
+  "withdrawals": [],
+  "payouts": {
+    "tansho": [{"selection_key": "4", "payout_per_100": 340, "popularity": 2}],
+    "umaren": [{"selection_key": "1-2", "payout_per_100": 890, "popularity": 3}]
+  }
+}'>{{ old('settlement_json') }}</textarea>
+                @error('settlement_json')
+                    <div class="text-sm text-red-600">{{ $message }}</div>
+                @enderror
+                <div class="flex justify-end">
+                    <button
+                        type="submit"
+                        class="rounded bg-purple-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-purple-700"
+                        onclick="return confirm('現在の結果・払戻をJSONの内容で置き換えます。よろしいですか？')">
+                        JSONから登録
+                    </button>
+                </div>
+            </form>
+        </div>
+
         <form method="POST" action="{{ route('races.settlement.update', $race) }}" class="space-y-6">
             @csrf
 
