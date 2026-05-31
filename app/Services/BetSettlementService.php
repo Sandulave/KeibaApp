@@ -9,6 +9,55 @@ use Illuminate\Support\Facades\DB;
 
 class BetSettlementService
 {
+    public function recalculateAllUserBalances(): void
+    {
+        DB::transaction(function () {
+            $this->recalculateCurrentBalanceForUsers(
+                User::query()->pluck('id')->all()
+            );
+        });
+    }
+
+    public function expectedCurrentBalances(array $userIds): array
+    {
+        $userIds = collect($userIds)
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn (int $id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($userIds)) {
+            return [];
+        }
+
+        $betTotalsByUser = DB::table('bets')
+            ->selectRaw('user_id, COALESCE(SUM(stake_amount), 0) as total_stake, COALESCE(SUM(return_amount), 0) as total_return')
+            ->whereIn('user_id', $userIds)
+            ->groupBy('user_id')
+            ->get()
+            ->keyBy('user_id');
+
+        $adjustmentTotalsByUser = DB::table('race_user_adjustments')
+            ->selectRaw("user_id, COALESCE(SUM(bonus_points), 0) as total_bonus_points, COALESCE(SUM(COALESCE(granted_allowance, CASE challenge_choice WHEN 'challenge' THEN 30000 WHEN 'normal' THEN 10000 ELSE 0 END)), 0) as total_allowance")
+            ->whereIn('user_id', $userIds)
+            ->groupBy('user_id')
+            ->get()
+            ->keyBy('user_id');
+
+        $balances = [];
+        foreach ($userIds as $userId) {
+            $betTotal = $betTotalsByUser->get($userId);
+            $adjustmentTotal = $adjustmentTotalsByUser->get($userId);
+            $balances[$userId] = (int) ($betTotal->total_return ?? 0)
+                - (int) ($betTotal->total_stake ?? 0)
+                + (int) ($adjustmentTotal->total_bonus_points ?? 0)
+                + (int) ($adjustmentTotal->total_allowance ?? 0);
+        }
+
+        return $balances;
+    }
+
     public function recalculateUserBalance(int $userId): void
     {
         if ($userId <= 0) {
@@ -106,28 +155,9 @@ class BetSettlementService
             return;
         }
 
-        $betTotalsByUser = DB::table('bets')
-            ->selectRaw('user_id, COALESCE(SUM(stake_amount), 0) as total_stake, COALESCE(SUM(return_amount), 0) as total_return')
-            ->whereIn('user_id', $userIds)
-            ->groupBy('user_id')
-            ->get()
-            ->keyBy('user_id');
-
-        $adjustmentTotalsByUser = DB::table('race_user_adjustments')
-            ->selectRaw("user_id, COALESCE(SUM(bonus_points), 0) as total_bonus_points, COALESCE(SUM(COALESCE(granted_allowance, CASE challenge_choice WHEN 'challenge' THEN 30000 WHEN 'normal' THEN 10000 ELSE 0 END)), 0) as total_allowance")
-            ->whereIn('user_id', $userIds)
-            ->groupBy('user_id')
-            ->get()
-            ->keyBy('user_id');
+        $expectedBalances = $this->expectedCurrentBalances($userIds);
 
         foreach ($userIds as $userId) {
-            $betTotal = $betTotalsByUser->get($userId);
-            $adjustmentTotal = $adjustmentTotalsByUser->get($userId);
-            $expectedBalance = (int) ($betTotal->total_return ?? 0)
-                - (int) ($betTotal->total_stake ?? 0)
-                + (int) ($adjustmentTotal->total_bonus_points ?? 0)
-                + (int) ($adjustmentTotal->total_allowance ?? 0);
-
             $user = User::query()
                 ->whereKey($userId)
                 ->lockForUpdate()
@@ -136,7 +166,7 @@ class BetSettlementService
                 continue;
             }
 
-            $user->current_balance = $expectedBalance;
+            $user->current_balance = $expectedBalances[$userId] ?? 0;
             $user->save();
         }
     }

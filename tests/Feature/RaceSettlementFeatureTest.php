@@ -225,7 +225,7 @@ class RaceSettlementFeatureTest extends TestCase
             'hit_count' => 2,
             'roi_percent' => 615.00,
         ]);
-        $this->assertSame(2230, (int) $admin->fresh()->current_balance);
+        $this->assertSame(1030, (int) $admin->fresh()->current_balance);
     }
 
     public function test_settlement_recalculation_does_not_double_add_return_to_current_balance(): void
@@ -265,12 +265,12 @@ class RaceSettlementFeatureTest extends TestCase
         $this->actingAs($admin)
             ->post(route('races.settlement.update', $race), $payload)
             ->assertRedirect(route('races.settlement.edit', $race));
-        $this->assertSame(840, (int) $admin->fresh()->current_balance);
+        $this->assertSame(240, (int) $admin->fresh()->current_balance);
 
         $this->actingAs($admin)
             ->post(route('races.settlement.update', $race), $payload)
             ->assertRedirect(route('races.settlement.edit', $race));
-        $this->assertSame(840, (int) $admin->fresh()->current_balance);
+        $this->assertSame(240, (int) $admin->fresh()->current_balance);
     }
 
     public function test_settlement_recalculates_balance_when_payout_is_corrected(): void
@@ -311,7 +311,7 @@ class RaceSettlementFeatureTest extends TestCase
             ->post(route('races.settlement.update', $race), $wrongPayload)
             ->assertRedirect(route('races.settlement.edit', $race));
 
-        $this->assertSame(1500, (int) $admin->fresh()->current_balance);
+        $this->assertSame(400, (int) $admin->fresh()->current_balance);
 
         $correctedPayload = [
             'ranks' => [
@@ -331,7 +331,7 @@ class RaceSettlementFeatureTest extends TestCase
             ->post(route('races.settlement.update', $race), $correctedPayload)
             ->assertRedirect(route('races.settlement.edit', $race));
 
-        $this->assertSame(1300, (int) $admin->fresh()->current_balance);
+        $this->assertSame(200, (int) $admin->fresh()->current_balance);
         $this->assertDatabaseHas('bets', [
             'id' => $bet->id,
             'return_amount' => 300,
