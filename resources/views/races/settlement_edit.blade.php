@@ -27,33 +27,23 @@
         @endif
 
         <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 p-4">
-            <h2 class="font-semibold">JSON一括登録</h2>
-            <form method="POST" action="{{ route('races.settlement.import-json', $race) }}" class="mt-3 space-y-3">
-                @csrf
+            <h2 class="font-semibold">netkeibaから貼り付け</h2>
+            <div class="mt-3 space-y-3">
                 <textarea
-                    name="settlement_json"
+                    id="netkeiba-paste"
                     rows="12"
-                    class="block w-full rounded border-gray-300 font-mono text-sm"
-                    placeholder='{
-  "ranks": {"1": [4], "2": [1], "3": [2]},
-  "withdrawals": [],
-  "payouts": {
-    "tansho": [{"selection_key": "4", "payout_per_100": 340, "popularity": 2}],
-    "umaren": [{"selection_key": "1-2", "payout_per_100": 890, "popularity": 3}]
-  }
-}'>{{ old('settlement_json') }}</textarea>
-                @error('settlement_json')
-                    <div class="text-sm text-red-600">{{ $message }}</div>
-                @enderror
+                    class="block w-full rounded border-gray-300 text-sm"
+                    placeholder="netkeibaの結果・払戻ページをコピーして貼り付け"></textarea>
+                <div id="netkeiba-import-status" class="hidden rounded p-3 text-sm"></div>
                 <div class="flex justify-end">
                     <button
-                        type="submit"
-                        class="rounded bg-purple-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-purple-700"
-                        onclick="return confirm('現在の結果・払戻をJSONの内容で置き換えます。よろしいですか？')">
-                        JSONから登録
+                        type="button"
+                        id="import-netkeiba"
+                        class="rounded bg-purple-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-purple-700">
+                        読み取ってフォームに反映
                     </button>
                 </div>
-            </form>
+            </div>
         </div>
 
         <form method="POST" action="{{ route('races.settlement.update', $race) }}" class="space-y-6">
@@ -239,6 +229,73 @@
             const selectedByRank = (rank) => {
                 return Array.from(document.querySelectorAll(`.rank-${rank}:checked`)).map((el) => normalizeNum(el.value));
             };
+            const setStatus = (message, type = 'success') => {
+                const status = document.getElementById('netkeiba-import-status');
+                if (!status) {
+                    return;
+                }
+
+                status.textContent = message;
+                status.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-yellow-100', 'text-yellow-800', 'bg-red-100', 'text-red-800');
+                if (type === 'error') {
+                    status.classList.add('bg-red-100', 'text-red-800');
+                } else if (type === 'warning') {
+                    status.classList.add('bg-yellow-100', 'text-yellow-800');
+                } else {
+                    status.classList.add('bg-green-100', 'text-green-800');
+                }
+            };
+            const setCheckedValues = (selector, values) => {
+                const valueSet = new Set(values.map((value) => String(parseInt(value, 10))));
+                document.querySelectorAll(selector).forEach((input) => {
+                    input.checked = valueSet.has(String(parseInt(input.value, 10)));
+                });
+            };
+            const renderPayoutRows = (betType, rows) => {
+                const container = document.querySelector(`.payout-rows[data-bet="${betType}"]`);
+                if (!container) {
+                    return;
+                }
+
+                const rowsToRender = rows.length > 0 ? rows : [{ selection_key: '', payout_per_100: '', popularity: '' }];
+                container.innerHTML = '';
+
+                rowsToRender.forEach((data, idx) => {
+                    const row = document.createElement('div');
+                    row.className = 'grid grid-cols-1 md:grid-cols-12 gap-2 items-center payout-row';
+
+                    const keyInput = document.createElement('input');
+                    keyInput.name = `payouts[${betType}][${idx}][selection_key]`;
+                    keyInput.className = 'md:col-span-5 rounded border-gray-300 text-sm';
+                    keyInput.placeholder = '当たり目（例: 1-2 / 1>2>3）';
+                    keyInput.value = data.selection_key ?? '';
+
+                    const payoutInput = document.createElement('input');
+                    payoutInput.type = 'number';
+                    payoutInput.min = '{{ $payoutMin }}';
+                    payoutInput.step = '{{ $payoutStep }}';
+                    payoutInput.name = `payouts[${betType}][${idx}][payout_per_100]`;
+                    payoutInput.className = 'md:col-span-3 rounded border-gray-300 text-sm';
+                    payoutInput.placeholder = '払戻金';
+                    payoutInput.value = data.payout_per_100 ?? '';
+
+                    const popularityInput = document.createElement('input');
+                    popularityInput.type = 'number';
+                    popularityInput.min = '1';
+                    popularityInput.name = `payouts[${betType}][${idx}][popularity]`;
+                    popularityInput.className = 'md:col-span-2 rounded border-gray-300 text-sm';
+                    popularityInput.placeholder = '人気';
+                    popularityInput.value = data.popularity ?? '';
+
+                    const removeButton = document.createElement('button');
+                    removeButton.type = 'button';
+                    removeButton.className = 'remove-row md:col-span-2 rounded bg-gray-100 px-2 py-1 text-sm hover:bg-gray-200';
+                    removeButton.textContent = '削除';
+
+                    row.append(keyInput, payoutInput, popularityInput, removeButton);
+                    container.appendChild(row);
+                });
+            };
             const clearAndRenderRows = (betType, keys) => {
                 const container = document.querySelector(`.payout-rows[data-bet="${betType}"]`);
                 if (!container) {
@@ -282,6 +339,158 @@
                         <button type="button" class="remove-row md:col-span-2 rounded bg-gray-100 px-2 py-1 text-sm hover:bg-gray-200">削除</button>
                     `;
                     container.appendChild(row);
+                });
+            };
+            const betTypeMap = {
+                '単勝': { key: 'tansho', picks: 1, ordered: false },
+                '複勝': { key: 'fukusho', picks: 1, ordered: false },
+                '枠連': { key: 'wakuren', picks: 2, ordered: false },
+                '馬連': { key: 'umaren', picks: 2, ordered: false },
+                'ワイド': { key: 'wide', picks: 2, ordered: false },
+                '馬単': { key: 'umatan', picks: 2, ordered: true },
+                '3連複': { key: 'sanrenpuku', picks: 3, ordered: false },
+                '三連複': { key: 'sanrenpuku', picks: 3, ordered: false },
+                '3連単': { key: 'sanrentan', picks: 3, ordered: true },
+                '三連単': { key: 'sanrentan', picks: 3, ordered: true },
+            };
+            const payoutLabels = Object.keys(betTypeMap);
+            const moneyValue = (line) => {
+                const match = line.match(/([0-9,]+)\s*円/);
+                return match ? parseInt(match[1].replaceAll(',', ''), 10) : null;
+            };
+            const popularityValue = (line) => {
+                const match = line.match(/([0-9]+)\s*人気/);
+                return match ? parseInt(match[1], 10) : null;
+            };
+            const plainIntValue = (line) => {
+                const trimmed = String(line).trim();
+                return /^[0-9]+$/.test(trimmed) ? parseInt(trimmed, 10) : null;
+            };
+            const numsInLine = (line) => Array.from(line.matchAll(/\d+/g)).map((match) => match[0]);
+            const looksLikeHorseName = (line) => {
+                const trimmed = String(line).trim();
+                return trimmed !== '' && plainIntValue(trimmed) === null && !/[0-9]/.test(trimmed);
+            };
+            const normalizeSelection = (numbers, meta) => {
+                const selected = numbers.slice(0, meta.picks).map((value) => String(parseInt(value, 10)));
+                if (selected.length !== meta.picks || selected.some((value) => value === 'NaN')) {
+                    return null;
+                }
+
+                if (meta.ordered) {
+                    return selected.join('>');
+                }
+
+                return selected
+                    .map((value) => parseInt(value, 10))
+                    .sort((a, b) => a - b)
+                    .join('-');
+            };
+            const parsePayoutRows = (blockLines, meta) => {
+                const moneyIndex = blockLines.findIndex((line) => moneyValue(line) !== null);
+                if (moneyIndex < 0) {
+                    return [];
+                }
+
+                const selectionLines = blockLines.slice(0, moneyIndex).filter((line) => numsInLine(line).length > 0);
+                const moneyLines = blockLines.slice(moneyIndex).filter((line) => moneyValue(line) !== null);
+                const popularityLines = blockLines.slice(moneyIndex).filter((line) => popularityValue(line) !== null);
+                const moneyCount = moneyLines.length;
+                let selections = selectionLines
+                    .map((line) => normalizeSelection(numsInLine(line), meta))
+                    .filter((value) => value !== null);
+
+                if (selections.length < moneyCount) {
+                    const flatNumbers = selectionLines.flatMap((line) => numsInLine(line));
+                    const grouped = [];
+                    for (let i = 0; i < flatNumbers.length; i += meta.picks) {
+                        const selection = normalizeSelection(flatNumbers.slice(i, i + meta.picks), meta);
+                        if (selection !== null) {
+                            grouped.push(selection);
+                        }
+                    }
+                    selections = grouped;
+                }
+
+                return moneyLines.map((line, idx) => ({
+                    selection_key: selections[idx] ?? '',
+                    payout_per_100: moneyValue(line) ?? '',
+                    popularity: popularityLines[idx] ? popularityValue(popularityLines[idx]) : '',
+                })).filter((row) => row.selection_key !== '' || row.payout_per_100 !== '');
+            };
+            const parseNetkeibaText = (rawText) => {
+                const lines = rawText
+                    .split(/\r?\n/)
+                    .map((line) => line.replace(/\u00a0/g, ' ').trim())
+                    .filter((line) => line !== '');
+                const warnings = [];
+                const result = {
+                    ranks: { 1: [], 2: [], 3: [] },
+                    payouts: {},
+                    warnings,
+                };
+                const resultStart = lines.findIndex((line) => line === '着順');
+                const payoutStart = lines.findIndex((line) => line === '払い戻し' || line === '払戻');
+
+                if (resultStart >= 0) {
+                    const resultEnd = payoutStart >= 0 ? payoutStart : lines.length;
+                    for (let i = resultStart + 1; i < resultEnd - 2; i++) {
+                        const rank = plainIntValue(lines[i]);
+                        const frame = plainIntValue(lines[i + 1]);
+                        const horseNo = plainIntValue(lines[i + 2]);
+                        if (
+                            [1, 2, 3].includes(rank)
+                            && frame !== null && frame >= 1 && frame <= 8
+                            && horseNo !== null && horseNo >= 1 && horseNo <= {{ $horseMax }}
+                            && looksLikeHorseName(lines[i + 3] ?? '')
+                        ) {
+                            result.ranks[rank].push(String(horseNo));
+                        }
+                    }
+                    result.ranks[1] = unique(result.ranks[1]);
+                    result.ranks[2] = unique(result.ranks[2]);
+                    result.ranks[3] = unique(result.ranks[3]);
+                } else {
+                    warnings.push('着順欄が見つかりませんでした。');
+                }
+
+                if (payoutStart < 0) {
+                    warnings.push('払い戻し欄が見つかりませんでした。');
+                    return result;
+                }
+
+                const payoutEndCandidates = ['コーナー通過順位', 'ラップタイム', '馬場情報'];
+                const payoutEnd = lines.findIndex((line, idx) => idx > payoutStart && payoutEndCandidates.includes(line));
+                const payoutLines = lines.slice(payoutStart + 1, payoutEnd >= 0 ? payoutEnd : lines.length);
+
+                payoutLabels.forEach((label) => {
+                    const labelIndex = payoutLines.findIndex((line) => line === label);
+                    if (labelIndex < 0) {
+                        return;
+                    }
+
+                    const nextLabelIndex = payoutLines.findIndex((line, idx) => idx > labelIndex && payoutLabels.includes(line));
+                    const blockLines = payoutLines.slice(labelIndex + 1, nextLabelIndex >= 0 ? nextLabelIndex : payoutLines.length);
+                    const meta = betTypeMap[label];
+                    const rows = parsePayoutRows(blockLines, meta);
+                    if (rows.length > 0) {
+                        result.payouts[meta.key] = rows;
+                    } else {
+                        warnings.push(`${label}を読み取れませんでした。`);
+                    }
+                });
+
+                return result;
+            };
+            const applyNetkeibaResult = (result) => {
+                [1, 2, 3].forEach((rank) => {
+                    if ((result.ranks[rank] ?? []).length > 0) {
+                        setCheckedValues(`.rank-${rank}`, result.ranks[rank]);
+                    }
+                });
+
+                Object.entries(result.payouts).forEach(([betType, rows]) => {
+                    renderPayoutRows(betType, rows);
                 });
             };
 
@@ -391,6 +600,30 @@
                     clearAndRenderRows('sanrenpuku', unique(choose3(top3).map(([a, b, c]) => unordered3(a, b, c))));
 
                     // 枠連: 馬番→枠番の情報がこの画面に無いため自動入力対象外
+                });
+            }
+
+            const importNetkeibaButton = document.getElementById('import-netkeiba');
+            if (importNetkeibaButton) {
+                importNetkeibaButton.addEventListener('click', () => {
+                    const textarea = document.getElementById('netkeiba-paste');
+                    const rawText = textarea?.value ?? '';
+                    if (rawText.trim() === '') {
+                        setStatus('貼り付け内容を入力してください。', 'error');
+                        return;
+                    }
+
+                    const parsed = parseNetkeibaText(rawText);
+                    const rankCount = [1, 2, 3].reduce((sum, rank) => sum + (parsed.ranks[rank]?.length ?? 0), 0);
+                    const payoutTypeCount = Object.keys(parsed.payouts).length;
+                    if (rankCount === 0 && payoutTypeCount === 0) {
+                        setStatus(['読み取れる着順・払戻が見つかりませんでした。', ...parsed.warnings].join(' '), 'error');
+                        return;
+                    }
+
+                    applyNetkeibaResult(parsed);
+                    const message = `読み取り完了: 着順${rankCount}件、払戻${payoutTypeCount}券種をフォームに反映しました。保存前に内容を確認してください。`;
+                    setStatus(parsed.warnings.length > 0 ? `${message} ${parsed.warnings.join(' ')}` : message, parsed.warnings.length > 0 ? 'warning' : 'success');
                 });
             }
         });

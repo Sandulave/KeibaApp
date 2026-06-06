@@ -23,6 +23,16 @@ class BetCommitBalanceFeatureTest extends TestCase
         ]);
     }
 
+    private function cartKey(User $user, Race $race): string
+    {
+        return "bet_cart_{$user->id}_{$race->id}";
+    }
+
+    private function commitTokenKey(User $user, Race $race): string
+    {
+        return "bet_commit_token_{$user->id}_{$race->id}";
+    }
+
     public function test_commit_subtracts_stake_amount_from_current_balance(): void
     {
         $user = User::factory()->create([
@@ -49,13 +59,13 @@ class BetCommitBalanceFeatureTest extends TestCase
         ];
 
         $this->actingAs($user)
-            ->withSession(["bet_cart_{$race->id}" => $sessionCart])
+            ->withSession([$this->cartKey($user, $race) => $sessionCart])
             ->post(route('bet.commit', $race))
             ->assertRedirect(route('bet.races'));
 
         $this->assertDatabaseHas('users', [
             'id' => $user->id,
-            'current_balance' => 48000,
+            'current_balance' => 8000,
         ]);
     }
 
@@ -84,7 +94,7 @@ class BetCommitBalanceFeatureTest extends TestCase
         ];
 
         $this->actingAs($user)
-            ->withSession(["bet_cart_{$race->id}" => $sessionCart])
+            ->withSession([$this->cartKey($user, $race) => $sessionCart])
             ->post(route('bet.commit', $race))
             ->assertRedirect(route('bet.cart', $race))
             ->assertSessionHasErrors('balance');
@@ -128,23 +138,23 @@ class BetCommitBalanceFeatureTest extends TestCase
 
         $this->actingAs($user)
             ->withSession([
-                "bet_cart_{$race->id}" => $sessionCart,
-                "bet_commit_token_{$race->id}" => $token,
+                $this->cartKey($user, $race) => $sessionCart,
+                $this->commitTokenKey($user, $race) => $token,
             ])
             ->post(route('bet.commit', $race), ['idempotency_key' => $token])
             ->assertRedirect(route('bet.races'));
 
         $this->actingAs($user)
             ->withSession([
-                "bet_cart_{$race->id}" => $sessionCart,
-                "bet_commit_token_{$race->id}" => $token,
+                $this->cartKey($user, $race) => $sessionCart,
+                $this->commitTokenKey($user, $race) => $token,
             ])
             ->post(route('bet.commit', $race), ['idempotency_key' => $token])
             ->assertRedirect(route('bet.races'));
 
         $this->assertDatabaseHas('users', [
             'id' => $user->id,
-            'current_balance' => 48000,
+            'current_balance' => 8000,
         ]);
         $this->assertDatabaseCount('bets', 1);
         $this->assertDatabaseCount('bet_items', 2);
@@ -169,7 +179,7 @@ class BetCommitBalanceFeatureTest extends TestCase
         $sessionCart = [
             'race_id' => $race->id,
             'items' => [
-                ['bet_type' => 'sanrenpuku', 'selection_key' => '4-5-7', 'amount' => 300],
+                ['bet_type' => 'sanrenpuku', 'selection_key' => '4-5-7', 'amount' => 100],
                 ['bet_type' => 'sanrenpuku', 'selection_key' => '4-7-9', 'amount' => 100],
             ],
             'groups' => [
@@ -191,8 +201,8 @@ class BetCommitBalanceFeatureTest extends TestCase
 
         $this->actingAs($user)
             ->withSession([
-                "bet_cart_{$race->id}" => $sessionCart,
-                "bet_commit_token_{$race->id}" => 'token-1',
+                $this->cartKey($user, $race) => $sessionCart,
+                $this->commitTokenKey($user, $race) => 'token-1',
             ])
             ->post(route('bet.commit', $race), [
                 'idempotency_key' => 'token-1',
@@ -261,8 +271,8 @@ class BetCommitBalanceFeatureTest extends TestCase
 
         $this->actingAs($user)
             ->withSession([
-                "bet_cart_{$race->id}" => $sessionCart,
-                "bet_commit_token_{$race->id}" => 'token-2',
+                $this->cartKey($user, $race) => $sessionCart,
+                $this->commitTokenKey($user, $race) => 'token-2',
             ])
             ->post(route('bet.commit', $race), [
                 'idempotency_key' => 'token-2',

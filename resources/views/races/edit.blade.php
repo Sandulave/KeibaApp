@@ -139,6 +139,23 @@
             <div class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
                 <p class="text-sm font-medium text-gray-900">馬名（任意）</p>
                 <p class="mt-1 text-xs text-gray-500">先に頭数を入力してください。</p>
+                <div class="mt-3 rounded-lg border border-gray-200 bg-white p-3">
+                    <p class="text-sm font-medium text-gray-900">netkeibaから馬名を貼り付け</p>
+                    <textarea
+                        id="netkeiba-horse-paste"
+                        rows="8"
+                        class="mt-2 block w-full rounded border-gray-300 text-sm"
+                        placeholder="netkeibaの出馬表または結果ページをコピーして貼り付け"></textarea>
+                    <div id="netkeiba-horse-import-status" class="mt-2 hidden rounded p-3 text-sm"></div>
+                    <div class="mt-2 flex justify-end">
+                        <button
+                            type="button"
+                            id="import-netkeiba-horses"
+                            class="rounded bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700">
+                            馬名をフォームに反映
+                        </button>
+                    </div>
+                </div>
                 <div class="mt-3 grid grid-cols-1 gap-2">
                     @for ($horseNo = 1; $horseNo <= 18; $horseNo++)
                         <label class="flex items-center gap-2 text-sm" data-horse-name-row="{{ $horseNo }}">
@@ -207,21 +224,6 @@
                 </label>
             </div>
 
-            <div class="mb-8 rounded-lg border border-amber-200 bg-amber-50 p-4">
-                <p class="text-sm font-medium text-amber-900">既選択ユーザーへの配布金額再適用</p>
-                <p class="mt-1 text-xs text-amber-800">
-                    勝負レース選択済みユーザーの付与金額を、現在のレース設定金額に合わせて再計算します。差分は残高へ反映されます。
-                </p>
-                <div class="mt-3">
-                    <button
-                        type="button"
-                        class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
-                        onclick="if (confirm('既選択ユーザーの配布金額を再適用します。よろしいですか？')) { document.getElementById('reapplyNormalAllowance').value = document.getElementById('normal_allowance').value; document.getElementById('reapplyChallengeAllowance').value = document.getElementById('challenge_allowance').value; document.getElementById('reapplyAllowancesForm').submit(); }">
-                        配布金額を再適用
-                    </button>
-                </div>
-            </div>
-
             {{-- ボタン --}}
             <div class="flex gap-3">
                 <button
@@ -237,11 +239,6 @@
             </div>
         </form>
 
-        <form id="reapplyAllowancesForm" method="POST" action="{{ route('races.allowances.reapply', $race) }}">
-            @csrf
-            <input type="hidden" id="reapplyNormalAllowance" name="normal_allowance" value="">
-            <input type="hidden" id="reapplyChallengeAllowance" name="challenge_allowance" value="">
-        </form>
     </div>
 
     <script>
@@ -253,6 +250,98 @@
                 return;
             }
 
+            const plainIntValue = (line) => {
+                const trimmed = String(line).trim();
+                return /^[0-9]+$/.test(trimmed) ? Number.parseInt(trimmed, 10) : null;
+            };
+            const frameHorsePairValue = (line) => {
+                const values = String(line).trim().match(/[0-9]+/g) ?? [];
+                if (values.length !== 2) {
+                    return null;
+                }
+
+                return {
+                    frame: Number.parseInt(values[0], 10),
+                    horseNo: Number.parseInt(values[1], 10),
+                };
+            };
+            const looksLikeHorseName = (line) => {
+                const trimmed = String(line).trim();
+                if (trimmed === '' || plainIntValue(trimmed) !== null || /[0-9]/.test(trimmed)) {
+                    return false;
+                }
+
+                const ignored = new Set([
+                    '馬名',
+                    '性齢',
+                    '斤量',
+                    '騎手',
+                    'タイム',
+                    '着差',
+                    '人気',
+                    '単勝',
+                    'オッズ',
+                    '厩舎',
+                    '馬体重',
+                    '着順',
+                    '払い戻し',
+                    '払戻',
+                ]);
+
+                return !ignored.has(trimmed);
+            };
+            const setStatus = (message, type = 'success') => {
+                const status = document.getElementById('netkeiba-horse-import-status');
+                if (!status) {
+                    return;
+                }
+
+                status.textContent = message;
+                status.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-yellow-100', 'text-yellow-800', 'bg-red-100', 'text-red-800');
+                if (type === 'error') {
+                    status.classList.add('bg-red-100', 'text-red-800');
+                } else if (type === 'warning') {
+                    status.classList.add('bg-yellow-100', 'text-yellow-800');
+                } else {
+                    status.classList.add('bg-green-100', 'text-green-800');
+                }
+            };
+            const parseNetkeibaHorseNames = (rawText) => {
+                const lines = rawText
+                    .split(/\r?\n/)
+                    .map((line) => line.replace(/\u00a0/g, ' ').trim())
+                    .filter((line) => line !== '');
+                const namesByNo = new Map();
+
+                for (let i = 2; i < lines.length; i++) {
+                    const frame = plainIntValue(lines[i - 2]);
+                    const horseNo = plainIntValue(lines[i - 1]);
+                    const horseName = lines[i];
+                    const pair = frameHorsePairValue(lines[i - 2]);
+                    const markedHorseName = lines[i];
+
+                    if (
+                        frame !== null && frame >= 1 && frame <= 8
+                        && horseNo !== null && horseNo >= 1 && horseNo <= 18
+                        && looksLikeHorseName(horseName)
+                        && !namesByNo.has(horseNo)
+                    ) {
+                        namesByNo.set(horseNo, horseName);
+                    }
+
+                    if (
+                        pair !== null
+                        && pair.frame >= 1 && pair.frame <= 8
+                        && pair.horseNo >= 1 && pair.horseNo <= 18
+                        && looksLikeHorseName(markedHorseName)
+                        && !namesByNo.has(pair.horseNo)
+                    ) {
+                        namesByNo.set(pair.horseNo, markedHorseName);
+                    }
+                }
+
+                return namesByNo;
+            };
             const updateHorseNameRows = () => {
                 const rawCount = Number.parseInt(horseCountInput.value, 10);
                 const count = Number.isNaN(rawCount) ? 0 : Math.max(0, Math.min(18, rawCount));
@@ -265,6 +354,49 @@
 
             horseCountInput.addEventListener('input', updateHorseNameRows);
             updateHorseNameRows();
+
+            const importButton = document.getElementById('import-netkeiba-horses');
+            if (importButton) {
+                importButton.addEventListener('click', () => {
+                    const textarea = document.getElementById('netkeiba-horse-paste');
+                    const rawText = textarea?.value ?? '';
+                    if (rawText.trim() === '') {
+                        setStatus('貼り付け内容を入力してください。', 'error');
+                        return;
+                    }
+
+                    const namesByNo = parseNetkeibaHorseNames(rawText);
+                    if (namesByNo.size === 0) {
+                        setStatus('馬名を読み取れませんでした。netkeibaの出馬表または結果ページをコピーしてください。', 'error');
+                        return;
+                    }
+
+                    let appliedCount = 0;
+                    let maxHorseNo = 0;
+                    namesByNo.forEach((horseName, horseNo) => {
+                        const input = document.querySelector(`input[name="horse_names[${horseNo}]"]`);
+                        if (!input) {
+                            return;
+                        }
+
+                        input.value = horseName;
+                        appliedCount++;
+                        maxHorseNo = Math.max(maxHorseNo, horseNo);
+                    });
+
+                    const rawCurrentCount = Number.parseInt(horseCountInput.value, 10);
+                    const currentCount = Number.isNaN(rawCurrentCount) ? 0 : rawCurrentCount;
+                    if (maxHorseNo > currentCount) {
+                        horseCountInput.value = String(maxHorseNo);
+                    }
+                    updateHorseNameRows();
+
+                    const countMessage = maxHorseNo > currentCount
+                        ? ` 頭数も${maxHorseNo}頭に更新しました。`
+                        : '';
+                    setStatus(`馬名${appliedCount}件をフォームに反映しました。保存前に内容を確認してください。${countMessage}`);
+                });
+            }
         });
     </script>
 </x-app-layout>

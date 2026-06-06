@@ -46,7 +46,6 @@ Route::middleware(['auth', 'role:group:admin'])->group(function () {
 
             Route::get('settlement/edit', [RaceSettlementController::class, 'edit'])->name('settlement.edit');
             Route::post('settlement', [RaceSettlementController::class, 'update'])->name('settlement.update');
-            Route::post('settlement/import-json', [RaceSettlementController::class, 'importJson'])->name('settlement.import-json');
         });
 });
 

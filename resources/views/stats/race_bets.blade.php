@@ -115,11 +115,15 @@
 
         @php
             $snapshotBets = $bets->filter(fn($bet) => filled($bet->snapshot_text))->values();
-            $allSnapshotText = $snapshotBets->pluck('snapshot_text')->implode("\n\n");
+            $stakeTotal = $bets->sum(fn($bet) => (int) $bet->stake_amount);
+            $allSnapshotText = trim($snapshotBets->pluck('snapshot_text')->implode("\n\n") . "\n\n合計金額: " . number_format($stakeTotal) . '円');
         @endphp
         <div class="rounded-lg bg-white p-3 ring-1 ring-gray-200">
             <div class="flex flex-wrap items-center gap-2">
                 <h2 class="text-xs font-semibold text-gray-900">購入内容（入力ベース）</h2>
+                <span class="inline-flex items-center rounded bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-800 ring-1 ring-blue-100">
+                    合計金額: {{ number_format($stakeTotal) }}円
+                </span>
                 @if ($snapshotBets->isNotEmpty())
                     <button
                         type="button"
@@ -159,7 +163,6 @@
 
         @php
             $itemTotal = $bets->sum(fn($bet) => $bet->items->count());
-            $stakeTotal = $bets->sum(fn($bet) => (int) $bet->stake_amount);
             $returnTotal = $bets->sum(fn($bet) => (int) $bet->return_amount);
         @endphp
 

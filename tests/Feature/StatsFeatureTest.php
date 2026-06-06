@@ -220,6 +220,8 @@ class StatsFeatureTest extends TestCase
         $response->assertOk();
         $response->assertSee('馬券詳細');
         $response->assertSee('すべての買い目をコピー');
+        $response->assertSee('合計金額: 1,200円');
+        $response->assertSee('合計金額: 1,200円', false);
         $response->assertSee('■ 三連複 ボックス');
         $response->assertSee('1-2-3');
         $response->assertSee('三連複');

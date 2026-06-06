@@ -42,8 +42,4 @@ return [
         'prompt' => env('DISCORD_OAUTH_PROMPT', 'consent'),
     ],
 
-    'jra_van_import' => [
-        'token' => env('JRA_VAN_IMPORT_TOKEN'),
-    ],
-
 ];

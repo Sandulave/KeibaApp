@@ -79,38 +79,3 @@ UPDATE app_settings SET value = '本日 22:00 までメンテナンス予定で�
 UPDATE app_settings SET value = '0' WHERE `key` = 'maintenance_enabled';
 UPDATE app_settings SET value = NULL WHERE `key` = 'maintenance_message';
 ```
-
-## JRA-VAN結果取り込み
-
-Windows PowerShellから `scripts/import-jravan-settlement.ps1` を実行します。スクリプトは32bit版PowerShellでJV-Link COMを呼び出し、JRA-VAN Data Lab.の `SE` / `HR` をアプリ用JSONへ変換して、取り込みAPIへ送信します。
-
-まずは必ずドライランします。
-
-```powershell
-.\scripts\import-jravan-settlement.ps1 `
-  -AppRaceId 1 `
-  -RaceDate 20260531 `
-  -CourseCode 05 `
-  -RaceNo 11 `
-  -ApiBaseUrl https://app.g1keibabattle.com `
-  -ApiToken "your-import-token" `
-  -DryRun
-```
-
-問題なければ `-DryRun` を外して登録します。
-
-```powershell
-.\scripts\import-jravan-settlement.ps1 `
-  -AppRaceId 1 `
-  -RaceDate 20260531 `
-  -CourseCode 05 `
-  -RaceNo 11 `
-  -ApiBaseUrl https://app.g1keibabattle.com `
-  -ApiToken "your-import-token"
-```
-
-- `AppRaceId`: このアプリ側のレースID
-- `RaceDate`: `yyyyMMdd`
-- `CourseCode`: JRA-VAN競馬場コード。東京は `05`
-- `RaceNo`: JRAのレース番号
-- 本番 `.env` の `JRA_VAN_IMPORT_TOKEN` と `-ApiToken` は同じ値にします。

@@ -42,6 +42,18 @@ class RaceSettlementFeatureTest extends TestCase
         $response->assertSee('精算');
     }
 
+    public function test_race_index_has_settlement_edit_link(): void
+    {
+        $admin = $this->adminUser();
+        $race = $this->createRace();
+
+        $this->actingAs($admin)
+            ->get(route('races.index'))
+            ->assertOk()
+            ->assertSee('結果登録')
+            ->assertSee(route('races.settlement.edit', $race), false);
+    }
+
     public function test_settlement_data_is_saved_and_replaced(): void
     {
         $admin = $this->adminUser();
@@ -119,65 +131,18 @@ class RaceSettlementFeatureTest extends TestCase
         ]);
     }
 
-    public function test_admin_can_import_settlement_json(): void
-    {
-        $admin = $this->adminUser();
-        $race = $this->createRace();
-
-        $payload = [
-            'ranks' => [
-                1 => [4],
-                2 => [1],
-                3 => [2],
-            ],
-            'withdrawals' => [18],
-            'payouts' => [
-                'tansho' => [
-                    ['selection_key' => '4', 'payout_per_100' => 340, 'popularity' => 2],
-                ],
-                'umaren' => [
-                    ['selection_key' => '1-2', 'payout_per_100' => 890, 'popularity' => 3],
-                ],
-            ],
-        ];
-
-        $this->actingAs($admin)
-            ->post(route('races.settlement.import-json', $race), [
-                'settlement_json' => json_encode($payload),
-            ])
-            ->assertRedirect(route('races.settlement.edit', $race))
-            ->assertSessionHas('success');
-
-        $this->assertDatabaseHas('race_results', [
-            'race_id' => $race->id,
-            'rank' => 1,
-            'horse_no' => '4',
-        ]);
-        $this->assertDatabaseHas('race_withdrawals', [
-            'race_id' => $race->id,
-            'horse_no' => '18',
-        ]);
-        $this->assertDatabaseHas('race_payouts', [
-            'race_id' => $race->id,
-            'bet_type' => 'umaren',
-            'selection_key' => '1-2',
-            'payout_per_100' => 890,
-            'popularity' => 3,
-        ]);
-    }
-
-    public function test_settlement_json_import_rejects_invalid_json(): void
+    public function test_settlement_edit_screen_uses_netkeiba_paste_instead_of_json_import(): void
     {
         $admin = $this->adminUser();
         $race = $this->createRace();
 
         $this->actingAs($admin)
-            ->from(route('races.settlement.edit', $race))
-            ->post(route('races.settlement.import-json', $race), [
-                'settlement_json' => '{"ranks":',
-            ])
-            ->assertRedirect(route('races.settlement.edit', $race))
-            ->assertSessionHasErrors('settlement_json');
+            ->get(route('races.settlement.edit', $race))
+            ->assertOk()
+            ->assertSee('netkeibaから貼り付け')
+            ->assertSee('読み取ってフォームに反映')
+            ->assertDontSee('JSON一括登録')
+            ->assertDontSee('settlement/import-json');
     }
 
     public function test_validation_rejects_duplicate_rank_and_invalid_payout(): void

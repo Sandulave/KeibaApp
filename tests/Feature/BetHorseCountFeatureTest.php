@@ -34,6 +34,11 @@ class BetHorseCountFeatureTest extends TestCase
         ]);
     }
 
+    private function cartKey(User $user, Race $race): string
+    {
+        return "bet_cart_{$user->id}_{$race->id}";
+    }
+
     public function test_admin_can_store_race_with_horse_count(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
@@ -76,6 +81,19 @@ class BetHorseCountFeatureTest extends TestCase
             'id' => $race->id,
             'horse_count' => 10,
         ]);
+    }
+
+    public function test_race_edit_screen_has_netkeiba_horse_name_import(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $race = $this->createRace(18);
+
+        $this->actingAs($admin)
+            ->get(route('races.edit', $race))
+            ->assertOk()
+            ->assertSee('netkeibaから馬名を貼り付け')
+            ->assertSee('馬名をフォームに反映')
+            ->assertSee('id="netkeiba-horse-paste"', false);
     }
 
     public function test_build_screen_displays_horses_only_up_to_race_horse_count(): void
@@ -133,7 +151,7 @@ class BetHorseCountFeatureTest extends TestCase
         $response->assertRedirect(route('bet.cart', $race));
         $response->assertSessionHasNoErrors();
 
-        $cart = session("bet_cart_{$race->id}");
+        $cart = session($this->cartKey($user, $race));
         $this->assertNotNull($cart);
         $this->assertSame(['2-2', '2-3'], collect($cart['items'])->pluck('selection_key')->values()->all());
     }
@@ -156,7 +174,7 @@ class BetHorseCountFeatureTest extends TestCase
         $response->assertRedirect(route('bet.cart', $race));
         $response->assertSessionHasNoErrors();
 
-        $cart = session("bet_cart_{$race->id}");
+        $cart = session($this->cartKey($user, $race));
         $this->assertNotNull($cart);
         $this->assertSame(['1-2', '1-3'], collect($cart['items'])->pluck('selection_key')->values()->all());
     }
@@ -177,7 +195,7 @@ class BetHorseCountFeatureTest extends TestCase
         $response->assertRedirect(route('bet.cart', $race));
         $response->assertSessionHasNoErrors();
 
-        $cart = session("bet_cart_{$race->id}");
+        $cart = session($this->cartKey($user, $race));
         $this->assertNotNull($cart);
         $this->assertCount(78, $cart['items']);
     }
@@ -220,7 +238,7 @@ class BetHorseCountFeatureTest extends TestCase
         $response->assertRedirect(route('bet.cart', $race));
         $response->assertSessionHasNoErrors();
 
-        $cart = session("bet_cart_{$race->id}");
+        $cart = session($this->cartKey($user, $race));
         $this->assertNotNull($cart);
         $this->assertSame(['2-2', '2-3'], collect($cart['items'])->pluck('selection_key')->values()->all());
     }
@@ -243,7 +261,7 @@ class BetHorseCountFeatureTest extends TestCase
         $response->assertRedirect(route('bet.cart', $race));
         $response->assertSessionHasNoErrors();
 
-        $cart = session("bet_cart_{$race->id}");
+        $cart = session($this->cartKey($user, $race));
         $this->assertNotNull($cart);
         $this->assertSame(
             ['1-2', '1-3', '2-3'],
@@ -270,7 +288,7 @@ class BetHorseCountFeatureTest extends TestCase
 
         $response = $this->actingAs($user)
             ->withSession([
-                "bet_cart_{$race->id}" => [
+                $this->cartKey($user, $race) => [
                     'race_id' => $race->id,
                     'items' => $cartItems,
                 ],
