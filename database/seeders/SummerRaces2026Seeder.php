@@ -7,9 +7,9 @@ use Illuminate\Database\Seeder;
 
 class SummerRaces2026Seeder extends Seeder
 {
-    public function run(): void
+    public static function races(): array
     {
-        $races = [
+        return [
             ['name' => '函館スプリントS（G3）', 'race_date' => '2026-06-13', 'course' => '函館'],
             ['name' => 'しらさぎS（G3）', 'race_date' => '2026-06-21', 'course' => '阪神'],
             ['name' => 'ラジオNIKKEI賞（G3）', 'race_date' => '2026-06-28', 'course' => '福島'],
@@ -39,11 +39,17 @@ class SummerRaces2026Seeder extends Seeder
             ['name' => 'セントライト記念（G2）', 'race_date' => '2026-09-13', 'course' => '中山'],
             ['name' => 'ローズS（G2）', 'race_date' => '2026-09-13', 'course' => '阪神'],
         ];
+    }
 
-        foreach ($races as $race) {
+    public function run(): void
+    {
+        foreach (self::races() as $race) {
             Race::firstOrCreate(
                 ['name' => $race['name'], 'race_date' => $race['race_date']],
-                ['course' => $race['course']]
+                [
+                    'course' => $race['course'],
+                    'horse_count' => 0,
+                ]
             );
         }
     }

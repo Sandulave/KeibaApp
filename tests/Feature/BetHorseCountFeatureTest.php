@@ -307,4 +307,5 @@ class BetHorseCountFeatureTest extends TestCase
             '枠連',
         ]);
     }
+
 }
