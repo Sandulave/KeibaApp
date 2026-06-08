@@ -96,6 +96,68 @@ class BetHorseCountFeatureTest extends TestCase
             ->assertSee('id="netkeiba-horse-paste"', false);
     }
 
+    public function test_summer_race_edit_screen_hides_allowance_inputs(): void
+    {
+        config(['domain.site.type' => 'summer']);
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $race = $this->createRace(18);
+
+        $this->actingAs($admin)
+            ->get(route('races.edit', $race))
+            ->assertOk()
+            ->assertSee('配布金額は夏競馬ルールで自動設定されます。')
+            ->assertSee('G2: 5,000円 / G3: 3,000円')
+            ->assertDontSee('id="normal_allowance"', false)
+            ->assertDontSee('id="challenge_allowance"', false);
+    }
+
+    public function test_summer_race_store_sets_allowances_from_grade(): void
+    {
+        config(['domain.site.type' => 'summer']);
+
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin)->post(route('races.store'), [
+            'name' => 'テスト記念（G3）',
+            'horse_count' => 12,
+            'race_date' => '2026-07-01',
+            'course' => '函館',
+            'normal_allowance' => 99999,
+            'challenge_allowance' => 99999,
+        ])->assertRedirect(route('races.index'));
+
+        $this->assertDatabaseHas('races', [
+            'name' => 'テスト記念（G3）',
+            'normal_allowance' => 3000,
+            'challenge_allowance' => 3000,
+        ]);
+    }
+
+    public function test_summer_race_update_sets_allowances_from_grade(): void
+    {
+        config(['domain.site.type' => 'summer']);
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $race = $this->createRace(18);
+
+        $this->actingAs($admin)->put(route('races.update', $race), [
+            'name' => 'テスト記念（G2）',
+            'horse_count' => 16,
+            'race_date' => (string) $race->race_date,
+            'course' => $race->course,
+            'normal_allowance' => 99999,
+            'challenge_allowance' => 99999,
+        ])->assertRedirect(route('races.index'));
+
+        $this->assertDatabaseHas('races', [
+            'id' => $race->id,
+            'name' => 'テスト記念（G2）',
+            'normal_allowance' => 5000,
+            'challenge_allowance' => 5000,
+        ]);
+    }
+
     public function test_build_screen_displays_horses_only_up_to_race_horse_count(): void
     {
         $user = User::factory()->create(['role' => 'user']);

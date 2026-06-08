@@ -101,40 +101,47 @@
                 @enderror
             </div>
 
-            <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                    <label for="normal_allowance" class="block text-sm font-medium text-gray-900">
-                        通常配布金額
-                    </label>
-                    <input
-                        type="number"
-                        id="normal_allowance"
-                        name="normal_allowance"
-                        value="{{ old('normal_allowance', (int) ($race->normal_allowance ?? 10000)) }}"
-                        min="0"
-                        step="100"
-                        class="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500">
-                    @error('normal_allowance')
-                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
+            @if (config('domain.site.type') === 'summer')
+                <div class="mb-6 rounded-lg border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
+                    <p class="font-medium">配布金額は夏競馬ルールで自動設定されます。</p>
+                    <p class="mt-1">G2: {{ number_format((int) config('domain.site.summer_allowances.g2', 5000)) }}円 / G3: {{ number_format((int) config('domain.site.summer_allowances.g3', 3000)) }}円</p>
                 </div>
-                <div>
-                    <label for="challenge_allowance" class="block text-sm font-medium text-gray-900">
-                        勝負配布金額
-                    </label>
-                    <input
-                        type="number"
-                        id="challenge_allowance"
-                        name="challenge_allowance"
-                        value="{{ old('challenge_allowance', (int) ($race->challenge_allowance ?? 30000)) }}"
-                        min="0"
-                        step="100"
-                        class="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500">
-                    @error('challenge_allowance')
-                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
+            @else
+                <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label for="normal_allowance" class="block text-sm font-medium text-gray-900">
+                            通常配布金額
+                        </label>
+                        <input
+                            type="number"
+                            id="normal_allowance"
+                            name="normal_allowance"
+                            value="{{ old('normal_allowance', (int) ($race->normal_allowance ?? 10000)) }}"
+                            min="0"
+                            step="100"
+                            class="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500">
+                        @error('normal_allowance')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label for="challenge_allowance" class="block text-sm font-medium text-gray-900">
+                            勝負配布金額
+                        </label>
+                        <input
+                            type="number"
+                            id="challenge_allowance"
+                            name="challenge_allowance"
+                            value="{{ old('challenge_allowance', (int) ($race->challenge_allowance ?? 30000)) }}"
+                            min="0"
+                            step="100"
+                            class="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500">
+                        @error('challenge_allowance')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
                 </div>
-            </div>
+            @endif
 
             <div class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
                 <p class="text-sm font-medium text-gray-900">馬名（任意）</p>

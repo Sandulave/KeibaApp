@@ -12,6 +12,37 @@ use App\Services\Finance\BetMoneyService;
 
 class RaceController extends Controller
 {
+    private function isSummerSite(): bool
+    {
+        return config('domain.site.type') === 'summer';
+    }
+
+    private function summerAllowanceForRaceName(string $raceName): int
+    {
+        if (preg_match('/(?:G2|Ｇ2|GⅡ|ＧⅡ|GII|ＧＩＩ)/u', $raceName) === 1) {
+            return (int) config('domain.site.summer_allowances.g2', 5_000);
+        }
+
+        if (preg_match('/(?:G3|Ｇ3|GⅢ|ＧⅢ|GIII|ＧＩＩＩ)/u', $raceName) === 1) {
+            return (int) config('domain.site.summer_allowances.g3', 3_000);
+        }
+
+        return 0;
+    }
+
+    private function applySummerAllowances(array $validated): array
+    {
+        if (! $this->isSummerSite()) {
+            return $validated;
+        }
+
+        $allowance = $this->summerAllowanceForRaceName((string) ($validated['name'] ?? ''));
+        $validated['normal_allowance'] = $allowance;
+        $validated['challenge_allowance'] = $allowance;
+
+        return $validated;
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -62,6 +93,7 @@ class RaceController extends Controller
         ]);
 
         $validated['is_betting_closed'] = $request->boolean('is_betting_closed');
+        $validated = $this->applySummerAllowances($validated);
         $horseNames = (array) ($validated['horse_names'] ?? []);
         unset($validated['horse_names']);
 
@@ -155,6 +187,7 @@ class RaceController extends Controller
         ]);
 
         $validated['is_betting_closed'] = $request->boolean('is_betting_closed');
+        $validated = $this->applySummerAllowances($validated);
         $horseNames = (array) ($validated['horse_names'] ?? []);
         unset($validated['horse_names']);
 
