@@ -11,6 +11,47 @@
 - Japanese user manual: `docs/USER_MANUAL_JA.md`
 - Japanese quick manual (user-only): `docs/USER_QUICK_MANUAL_JA.md`
 
+## 環境別レースデータ
+
+本番G1、検証、夏競馬は同じGit・同じmigrationを使い、環境ごとの `.env` で接続先DBと流すレースデータを分けます。
+
+G1環境:
+
+```env
+APP_NAME=初心者G1馬券バトル
+APP_URL=https://app.g1keibabattle.com
+KEIBA_SITE_TYPE=g1
+KEIBA_SITE_LABEL="${APP_NAME}"
+```
+
+夏競馬環境:
+
+```env
+APP_NAME=夏競馬バトル
+APP_URL=https://summer.g1keibabattle.com
+KEIBA_SITE_TYPE=summer
+KEIBA_SITE_LABEL="${APP_NAME}"
+```
+
+どちらの環境でもmigrationは共通です。
+
+```bash
+php artisan migrate
+```
+
+Seederは `KEIBA_SITE_TYPE` に応じて `DatabaseSeeder` が自動選択します。
+
+```bash
+php artisan db:seed
+```
+
+個別に流す場合:
+
+```bash
+php artisan db:seed --class=G1Races2026Seeder
+php artisan db:seed --class=SummerRaces2026Seeder
+```
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

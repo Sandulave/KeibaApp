@@ -8,6 +8,12 @@ foreach (BetType::all() as $betType) {
 }
 
 return [
+    'site' => [
+        'type' => env('KEIBA_SITE_TYPE', 'g1'),
+        'label' => env('KEIBA_SITE_LABEL', env('APP_NAME', '初心者G1馬券バトル')),
+        'race_seeder' => env('KEIBA_RACE_SEEDER'),
+    ],
+
     'roles' => [
         'admin' => ['admin', 'kannrisyato'],
         'viewer_fallback' => 'user',

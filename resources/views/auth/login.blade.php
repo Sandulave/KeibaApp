@@ -9,7 +9,7 @@
 
     <div class="mt-4">
         <p class="mb-2 text-sm text-gray-600">ログインはDiscordアカウントのみ対応しています。</p>
-        <p class="mb-3 text-xs text-amber-700">初心者G1馬券バトルチャンネルにログインしているアカウントでログインしてください。</p>
+        <p class="mb-3 text-xs text-amber-700">{{ config('domain.site.label') }}チャンネルにログインしているアカウントでログインしてください。</p>
         <p class="mb-3 text-xs text-amber-700">別アカウントが表示された場合は、ブラウザ版Discordから一度ログアウトし、正しいアカウントでログインし直してから再度お試しください。</p>
         <a
             href="{{ route('auth.discord.redirect', [], false) }}"
