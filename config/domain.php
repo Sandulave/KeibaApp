@@ -12,6 +12,10 @@ return [
         'type' => env('KEIBA_SITE_TYPE', 'g1'),
         'label' => env('KEIBA_SITE_LABEL', env('APP_NAME', '初心者G1馬券バトル')),
         'race_seeder' => env('KEIBA_RACE_SEEDER'),
+        'summer_allowances' => [
+            'g2' => (int) env('KEIBA_SUMMER_G2_ALLOWANCE', 5_000),
+            'g3' => (int) env('KEIBA_SUMMER_G3_ALLOWANCE', 3_000),
+        ],
     ],
 
     'roles' => [

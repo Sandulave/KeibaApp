@@ -74,7 +74,7 @@
                                             購入不可
                                         </span>
                                     @else
-                                        <a href="{{ route('bet.challenge.select', $race) }}"
+                                        <a href="{{ config('domain.site.type') === 'summer' ? route('bet.types', $race) : route('bet.challenge.select', $race) }}"
                                             class="inline-flex shrink-0 whitespace-nowrap items-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition">
                                             購入へ
                                         </a>

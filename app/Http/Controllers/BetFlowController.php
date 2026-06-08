@@ -116,10 +116,52 @@ class BetFlowController extends Controller
             ->value('challenge_choice');
     }
 
+    private function isSummerSite(): bool
+    {
+        return config('domain.site.type') === 'summer';
+    }
+
+    private function grantAllowanceIfMissing(int $userId, Race $race, string $choice, BetMoneyService $betMoneyService): void
+    {
+        DB::transaction(function () use ($userId, $race, $choice, $betMoneyService) {
+            $adjustment = RaceUserAdjustment::query()
+                ->lockForUpdate()
+                ->firstOrNew([
+                    'user_id' => $userId,
+                    'race_id' => $race->id,
+                ]);
+
+            if ($adjustment->challenge_choice !== null) {
+                return;
+            }
+
+            $user = User::query()
+                ->whereKey($userId)
+                ->lockForUpdate()
+                ->firstOrFail();
+            $allowance = $betMoneyService->allowanceForRaceChoice($race, $choice);
+
+            $adjustment->bonus_points = (int) ($adjustment->bonus_points ?? 0);
+            $adjustment->challenge_choice = $choice;
+            $adjustment->granted_allowance = $allowance;
+            $adjustment->challenge_chosen_at = now();
+            $adjustment->save();
+
+            $user->current_balance = (int) ($user->current_balance ?? 0) + $allowance;
+            $user->save();
+        });
+    }
+
     private function ensureChallengeChoiceSelected(Race $race)
     {
         $choice = $this->challengeChoiceForUserRace($this->activeUserId(), (int) $race->id);
         if ($choice !== null) {
+            return null;
+        }
+
+        if ($this->isSummerSite()) {
+            $this->grantAllowanceIfMissing($this->activeUserId(), $race, self::CHALLENGE_NORMAL, app(BetMoneyService::class));
+
             return null;
         }
 
@@ -163,6 +205,12 @@ class BetFlowController extends Controller
             return redirect()->route('bet.types', $race);
         }
 
+        if ($this->isSummerSite()) {
+            $this->grantAllowanceIfMissing($this->activeUserId(), $race, self::CHALLENGE_NORMAL, app(BetMoneyService::class));
+
+            return redirect()->route('bet.types', $race);
+        }
+
         return view('bet.challenge_select', [
             'race' => $race,
         ]);
@@ -187,31 +235,7 @@ class BetFlowController extends Controller
         $userId = $this->activeUserId();
         $choice = (string) $validated['challenge_choice'];
 
-        DB::transaction(function () use ($userId, $race, $choice, $betMoneyService) {
-            $adjustment = RaceUserAdjustment::query()
-                ->lockForUpdate()
-                ->firstOrNew([
-                    'user_id' => $userId,
-                    'race_id' => $race->id,
-                ]);
-
-            if ($adjustment->challenge_choice === null) {
-                $user = User::query()
-                    ->whereKey($userId)
-                    ->lockForUpdate()
-                    ->firstOrFail();
-                $allowance = $betMoneyService->allowanceForRaceChoice($race, $choice);
-
-                $adjustment->bonus_points = (int) ($adjustment->bonus_points ?? 0);
-                $adjustment->challenge_choice = $choice;
-                $adjustment->granted_allowance = $allowance;
-                $adjustment->challenge_chosen_at = now();
-                $adjustment->save();
-
-                $user->current_balance = (int) ($user->current_balance ?? 0) + $allowance;
-                $user->save();
-            }
-        });
+        $this->grantAllowanceIfMissing($userId, $race, $choice, $betMoneyService);
 
         return redirect()->route('bet.types', $race);
     }
