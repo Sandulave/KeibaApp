@@ -41,7 +41,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
             <div class="sm:mr-auto flex items-center gap-2 sm:gap-3 flex-wrap">
-                <img src="{{ asset('login_header.png') }}" alt="競馬アプリ ロゴ" class="h-14 sm:h-20 lg:h-24 w-auto shrink-0" />
+                <x-site-logo variant="nav" />
 
             @auth
                 <div class="text-[11px] sm:text-sm text-gray-600 break-all leading-tight">
