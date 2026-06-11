@@ -257,12 +257,21 @@
                 return;
             }
 
+            const normalizeDigits = (value) => String(value).replace(/[０-９]/g, (char) => {
+                return String.fromCharCode(char.charCodeAt(0) - 0xFEE0);
+            });
+            const normalizeLine = (line) => {
+                return normalizeDigits(line)
+                    .replace(/\u00a0/g, ' ')
+                    .replace(/\u3000/g, ' ')
+                    .trim();
+            };
             const plainIntValue = (line) => {
-                const trimmed = String(line).trim();
+                const trimmed = normalizeLine(line);
                 return /^[0-9]+$/.test(trimmed) ? Number.parseInt(trimmed, 10) : null;
             };
             const frameHorsePairValue = (line) => {
-                const values = String(line).trim().match(/[0-9]+/g) ?? [];
+                const values = normalizeLine(line).match(/[0-9]+/g) ?? [];
                 if (values.length !== 2) {
                     return null;
                 }
@@ -272,30 +281,53 @@
                     horseNo: Number.parseInt(values[1], 10),
                 };
             };
+            const ignoredHorseNameCells = new Set([
+                '馬名',
+                '性齢',
+                '斤量',
+                '騎手',
+                'タイム',
+                '着差',
+                '人気',
+                '単勝',
+                'オッズ',
+                '厩舎',
+                '馬体重',
+                '着順',
+                '枠',
+                '馬番',
+                '印',
+                '父',
+                '母',
+                '払い戻し',
+                '払戻',
+                '出馬表',
+                '結果',
+                '登録',
+                '取消',
+                '除外',
+            ]);
+            const cleanHorseName = (line) => {
+                return normalizeLine(line)
+                    .replace(/^[◎○▲△☆★注消\-−ー\s]+/u, '')
+                    .replace(/^(取消|除外|競走除外)\s*/u, '')
+                    .trim();
+            };
             const looksLikeHorseName = (line) => {
-                const trimmed = String(line).trim();
+                const trimmed = cleanHorseName(line);
                 if (trimmed === '' || plainIntValue(trimmed) !== null || /[0-9]/.test(trimmed)) {
                     return false;
                 }
 
-                const ignored = new Set([
-                    '馬名',
-                    '性齢',
-                    '斤量',
-                    '騎手',
-                    'タイム',
-                    '着差',
-                    '人気',
-                    '単勝',
-                    'オッズ',
-                    '厩舎',
-                    '馬体重',
-                    '着順',
-                    '払い戻し',
-                    '払戻',
-                ]);
+                if (ignoredHorseNameCells.has(trimmed)) {
+                    return false;
+                }
 
-                return !ignored.has(trimmed);
+                if (/^[牡牝セ騸][0-9]+$/u.test(trimmed) || /^[0-9]+(?:\.[0-9]+)?kg?$/i.test(trimmed)) {
+                    return false;
+                }
+
+                return /[ァ-ヶー一-龠々〆ヵヶぁ-ん]/u.test(trimmed);
             };
             const setStatus = (message, type = 'success') => {
                 const status = document.getElementById('netkeiba-horse-import-status');
@@ -316,24 +348,132 @@
             const parseNetkeibaHorseNames = (rawText) => {
                 const lines = rawText
                     .split(/\r?\n/)
-                    .map((line) => line.replace(/\u00a0/g, ' ').trim())
+                    .map((line) => normalizeLine(line))
                     .filter((line) => line !== '');
                 const namesByNo = new Map();
+                const splitCells = (line) => {
+                    return normalizeLine(line)
+                        .split(/\t+|\s{2,}|\s+/)
+                        .map((cell) => cell.trim())
+                        .filter((cell) => cell !== '');
+                };
+                const looksLikeHorseDetail = (line) => {
+                    return splitCells(line).some((cell) => /^[牡牝セ騸][0-9]+$/u.test(cell));
+                };
+                const setHorseName = (horseNo, horseName) => {
+                    if (horseNo < 1 || horseNo > 18 || namesByNo.has(horseNo) || !looksLikeHorseName(horseName)) {
+                        return false;
+                    }
 
-                for (let i = 2; i < lines.length; i++) {
-                    const frame = plainIntValue(lines[i - 2]);
-                    const horseNo = plainIntValue(lines[i - 1]);
-                    const horseName = lines[i];
-                    const pair = frameHorsePairValue(lines[i - 2]);
-                    const markedHorseName = lines[i];
+                    namesByNo.set(horseNo, cleanHorseName(horseName));
+                    return true;
+                };
+                const firstHorseNameCell = (cells, startIndex) => {
+                    for (let i = startIndex; i < Math.min(cells.length, startIndex + 5); i++) {
+                        if (looksLikeHorseName(cells[i])) {
+                            return cells[i];
+                        }
+                    }
+
+                    return null;
+                };
+                const entryRowInfo = (line) => {
+                    const cells = splitCells(line);
+                    for (let i = 0; i < cells.length - 2; i++) {
+                        const frame = plainIntValue(cells[i]);
+                        const horseNo = plainIntValue(cells[i + 1]);
+                        const horseName = firstHorseNameCell(cells, i + 2);
+                        if (frame !== null && frame >= 1 && frame <= 8 && horseNo !== null && horseName !== null) {
+                            return { horseNo, horseName };
+                        }
+                    }
+
+                    for (let i = 0; i < cells.length - 3; i++) {
+                        const rank = plainIntValue(cells[i]);
+                        const frame = plainIntValue(cells[i + 1]);
+                        const horseNo = plainIntValue(cells[i + 2]);
+                        const horseName = firstHorseNameCell(cells, i + 3);
+                        if (rank !== null && rank >= 1 && rank <= 18 && frame !== null && frame >= 1 && frame <= 8 && horseNo !== null && horseName !== null) {
+                            return { horseNo, horseName };
+                        }
+                    }
+
+                    return null;
+                };
+                const findEntryStart = () => {
+                    for (let i = 0; i < lines.length; i++) {
+                        const pair = frameHorsePairValue(lines[i]);
+                        if (pair !== null && pair.frame >= 1 && pair.frame <= 8 && pair.horseNo >= 1 && pair.horseNo <= 18) {
+                            for (let j = i + 1; j < Math.min(lines.length, i + 5); j++) {
+                                if (looksLikeHorseName(lines[j]) && looksLikeHorseDetail(lines[j + 1] ?? '')) {
+                                    return i;
+                                }
+                            }
+                        }
+
+                        const rowInfo = entryRowInfo(lines[i]);
+                        if (rowInfo !== null && looksLikeHorseDetail(lines[i])) {
+                            return i;
+                        }
+                    }
+
+                    return 0;
+                };
+                const findEntryEnd = (startIndex) => {
+                    const endMarkers = [
+                        '選んだ馬のオッズを見る',
+                        'Myレースに登録する',
+                        'AIレース相性度',
+                        '※結果・成績・オッズ',
+                    ];
+                    const endIndex = lines.findIndex((line, idx) => {
+                        return idx > startIndex && endMarkers.some((marker) => line.includes(marker));
+                    });
+
+                    return endIndex >= 0 ? endIndex : lines.length;
+                };
+                const entryStart = findEntryStart();
+                const entryLines = lines.slice(entryStart, findEntryEnd(entryStart));
+
+                entryLines.forEach((line) => {
+                    const cells = splitCells(line);
+                    if (cells.length < 3) {
+                        return;
+                    }
+
+                    for (let i = 0; i < cells.length - 2; i++) {
+                        const frame = plainIntValue(cells[i]);
+                        const horseNo = plainIntValue(cells[i + 1]);
+                        const horseName = firstHorseNameCell(cells, i + 2);
+                        if (frame !== null && frame >= 1 && frame <= 8 && horseNo !== null) {
+                            setHorseName(horseNo, horseName ?? '');
+                        }
+                    }
+
+                    for (let i = 0; i < cells.length - 3; i++) {
+                        const rank = plainIntValue(cells[i]);
+                        const frame = plainIntValue(cells[i + 1]);
+                        const horseNo = plainIntValue(cells[i + 2]);
+                        const horseName = firstHorseNameCell(cells, i + 3);
+                        if (rank !== null && rank >= 1 && rank <= 18 && frame !== null && frame >= 1 && frame <= 8 && horseNo !== null) {
+                            setHorseName(horseNo, horseName ?? '');
+                        }
+                    }
+                });
+
+                for (let i = 2; i < entryLines.length; i++) {
+                    const frame = plainIntValue(entryLines[i - 2]);
+                    const horseNo = plainIntValue(entryLines[i - 1]);
+                    const horseName = entryLines[i];
+                    const pair = frameHorsePairValue(entryLines[i - 2]);
+                    const markedHorseName = entryLines[i];
 
                     if (
                         frame !== null && frame >= 1 && frame <= 8
                         && horseNo !== null && horseNo >= 1 && horseNo <= 18
                         && looksLikeHorseName(horseName)
-                        && !namesByNo.has(horseNo)
                     ) {
-                        namesByNo.set(horseNo, horseName);
+                        setHorseName(horseNo, horseName);
                     }
 
                     if (
@@ -341,9 +481,8 @@
                         && pair.frame >= 1 && pair.frame <= 8
                         && pair.horseNo >= 1 && pair.horseNo <= 18
                         && looksLikeHorseName(markedHorseName)
-                        && !namesByNo.has(pair.horseNo)
                     ) {
-                        namesByNo.set(pair.horseNo, markedHorseName);
+                        setHorseName(pair.horseNo, markedHorseName);
                     }
                 }
 
