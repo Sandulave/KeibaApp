@@ -10,7 +10,7 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        User::updateOrCreate(
+        User::firstOrCreate(
             ['name' => 'admin'],
             [
                 'display_name' => '管理者',
@@ -20,7 +20,7 @@ class UserSeeder extends Seeder
             ]
         );
 
-        User::updateOrCreate(
+        User::firstOrCreate(
             ['name' => 'user'],
             [
                 'display_name' => 'ユーザー',

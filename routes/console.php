@@ -3,12 +3,49 @@
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use App\Services\BetSettlementService;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+Artisan::command('admin:password {name=admin : Admin login ID} {--password-env= : Environment variable name containing the new password}', function (string $name) {
+    $user = User::query()
+        ->where('name', $name)
+        ->first();
+
+    if (! $user || ! $user->isAdmin()) {
+        $this->error("Admin user [{$name}] was not found.");
+        return 1;
+    }
+
+    $passwordEnv = (string) ($this->option('password-env') ?? '');
+    $password = $passwordEnv !== ''
+        ? (string) env($passwordEnv, '')
+        : (string) $this->secret('New password');
+
+    if ($password === '') {
+        $this->error('Password cannot be empty.');
+        return 1;
+    }
+
+    if ($passwordEnv === '') {
+        $confirmation = (string) $this->secret('Confirm password');
+        if (! hash_equals($password, $confirmation)) {
+            $this->error('Password confirmation does not match.');
+            return 1;
+        }
+    }
+
+    $user->forceFill([
+        'password' => Hash::make($password),
+    ])->save();
+
+    $this->info("Admin password updated for [{$name}].");
+    return 0;
+})->purpose('Update an admin password interactively');
 
 Artisan::command('balances:recalculate {--dry-run : Show differences without updating users}', function (BetSettlementService $settlementService) {
     $dbConnection = config('database.default');
