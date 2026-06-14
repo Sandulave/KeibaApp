@@ -12,6 +12,7 @@ class SummerRaces2026Seeder extends Seeder
         return [
             ['name' => '函館スプリントS（G3）', 'race_date' => '2026-06-13', 'course' => '函館'],
             ['name' => 'しらさぎS（G3）', 'race_date' => '2026-06-21', 'course' => '阪神'],
+            ['name' => '府中牝馬S（G3）', 'race_date' => '2026-06-21', 'course' => '東京'],
             ['name' => 'ラジオNIKKEI賞（G3）', 'race_date' => '2026-06-28', 'course' => '福島'],
             ['name' => '函館記念（G3）', 'race_date' => '2026-06-28', 'course' => '函館'],
             ['name' => '北九州記念（G3）', 'race_date' => '2026-07-05', 'course' => '小倉'],

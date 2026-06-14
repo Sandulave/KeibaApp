@@ -60,7 +60,7 @@ class SiteSeederTest extends TestCase
         $this->seed(SummerRaces2026Seeder::class);
         $this->seed(SummerRaces2026Seeder::class);
 
-        $this->assertSame(28, Race::query()->count());
+        $this->assertSame(29, Race::query()->count());
     }
 
     public function test_set_summer_race_horse_count_to_zero_seeder_updates_only_unregistered_races(): void

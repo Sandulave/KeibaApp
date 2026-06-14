@@ -36,11 +36,11 @@ class BetMoneyService
         $raceName = (string) $race->name;
 
         if (preg_match('/(?:G2|Ｇ2|GⅡ|ＧⅡ|GII|ＧＩＩ)/u', $raceName) === 1) {
-            return (int) config('domain.site.summer_allowances.g2', 5_000);
+            return (int) config('domain.site.summer_allowances.g2', 10_000);
         }
 
         if (preg_match('/(?:G3|Ｇ3|GⅢ|ＧⅢ|GIII|ＧＩＩＩ)/u', $raceName) === 1) {
-            return (int) config('domain.site.summer_allowances.g3', 3_000);
+            return (int) config('domain.site.summer_allowances.g3', 6_000);
         }
 
         return 0;

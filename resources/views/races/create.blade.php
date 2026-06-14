@@ -92,7 +92,7 @@
             @if (config('domain.site.type') === 'summer')
                 <div class="mb-6 rounded-lg border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
                     <p class="font-medium">配布金額は夏競馬ルールで自動設定されます。</p>
-                    <p class="mt-1">G2: {{ number_format((int) config('domain.site.summer_allowances.g2', 5000)) }}円 / G3: {{ number_format((int) config('domain.site.summer_allowances.g3', 3000)) }}円</p>
+                    <p class="mt-1">G2: {{ number_format((int) config('domain.site.summer_allowances.g2', 10000)) }}円 / G3: {{ number_format((int) config('domain.site.summer_allowances.g3', 6000)) }}円</p>
                 </div>
             @else
                 <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">

@@ -141,11 +141,11 @@ class BetChallengeChoiceFeatureTest extends TestCase
             'user_id' => $user->id,
             'race_id' => $race->id,
             'challenge_choice' => 'normal',
-            'granted_allowance' => 3000,
+            'granted_allowance' => 6000,
         ]);
         $this->assertDatabaseHas('users', [
             'id' => $user->id,
-            'current_balance' => 3700,
+            'current_balance' => 6700,
         ]);
 
         $this->actingAs($user)
@@ -154,7 +154,7 @@ class BetChallengeChoiceFeatureTest extends TestCase
 
         $this->assertDatabaseHas('users', [
             'id' => $user->id,
-            'current_balance' => 3700,
+            'current_balance' => 6700,
         ]);
     }
 
@@ -178,11 +178,11 @@ class BetChallengeChoiceFeatureTest extends TestCase
             'user_id' => $user->id,
             'race_id' => $race->id,
             'challenge_choice' => 'normal',
-            'granted_allowance' => 5000,
+            'granted_allowance' => 10000,
         ]);
         $this->assertDatabaseHas('users', [
             'id' => $user->id,
-            'current_balance' => 6000,
+            'current_balance' => 11000,
         ]);
     }
 }

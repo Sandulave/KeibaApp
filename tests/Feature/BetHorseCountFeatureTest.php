@@ -107,7 +107,7 @@ class BetHorseCountFeatureTest extends TestCase
             ->get(route('races.edit', $race))
             ->assertOk()
             ->assertSee('配布金額は夏競馬ルールで自動設定されます。')
-            ->assertSee('G2: 5,000円 / G3: 3,000円')
+            ->assertSee('G2: 10,000円 / G3: 6,000円')
             ->assertDontSee('id="normal_allowance"', false)
             ->assertDontSee('id="challenge_allowance"', false);
     }
@@ -129,8 +129,8 @@ class BetHorseCountFeatureTest extends TestCase
 
         $this->assertDatabaseHas('races', [
             'name' => 'テスト記念（G3）',
-            'normal_allowance' => 3000,
-            'challenge_allowance' => 3000,
+            'normal_allowance' => 6000,
+            'challenge_allowance' => 6000,
         ]);
     }
 
@@ -153,8 +153,8 @@ class BetHorseCountFeatureTest extends TestCase
         $this->assertDatabaseHas('races', [
             'id' => $race->id,
             'name' => 'テスト記念（G2）',
-            'normal_allowance' => 5000,
-            'challenge_allowance' => 5000,
+            'normal_allowance' => 10000,
+            'challenge_allowance' => 10000,
         ]);
     }
 
