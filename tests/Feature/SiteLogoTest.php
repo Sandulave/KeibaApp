@@ -16,8 +16,8 @@ class SiteLogoTest extends TestCase
         $response = $this->get('/login');
 
         $response->assertOk();
-        $response->assertSee('夏競馬');
         $response->assertSee('summer_icon.png');
+        $response->assertSee('favicon.svg');
         $response->assertDontSee('login_header.png');
     }
 

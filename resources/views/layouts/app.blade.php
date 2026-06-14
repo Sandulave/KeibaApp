@@ -15,7 +15,7 @@
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
-        <link rel="icon" href="{{ asset(config('domain.site.type') === 'summer' ? 'summer_icon.png' : 'favicon.svg') }}">
+        <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
         <style>
             @media (max-width: 639px) {
                 .mobile-scroll-fade-host {
