@@ -6,7 +6,7 @@ use Tests\TestCase;
 
 class SiteLogoTest extends TestCase
 {
-    public function test_summer_site_uses_text_logo(): void
+    public function test_summer_site_uses_summer_icon_logo(): void
     {
         config([
             'domain.site.type' => 'summer',
@@ -17,6 +17,7 @@ class SiteLogoTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('夏競馬');
+        $response->assertSee('summer_icon.png');
         $response->assertDontSee('login_header.png');
     }
 
